@@ -281,11 +281,16 @@ async function handleSupabaseAuth(action) {
     
     // Auth successful
     document.getElementById('supabase-password').value = '';
-    syncPullSupabase(true);
+    
+    // Force a small delay to allow onAuthStateChange to update supabaseUser before pulling
+    setTimeout(() => {
+      syncPullSupabase(true);
+    }, 500);
     
   } catch (err) {
     errorMsg.textContent = err.message;
     errorMsg.style.display = 'block';
+    alert("Authentication Error: " + err.message);
   }
 }
 
