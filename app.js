@@ -199,29 +199,27 @@ function updateSyncTimeLabel(timestamp) {
 let supabaseClient = null;
 let supabaseUser = null;
 
-function initSupabase() {
-  const savedUrl = localStorage.getItem('supabase_url');
-  const savedKey = localStorage.getItem('supabase_key');
-  
-  if (savedUrl && savedKey) {
-    document.getElementById('supabase-url').value = savedUrl;
-    document.getElementById('supabase-key').value = savedKey;
-    if (typeof supabase !== 'undefined') {
-      supabaseClient = supabase.createClient(savedUrl, savedKey);
-      
-      // Check session
-      supabaseClient.auth.getSession().then(({ data: { session } }) => {
-        updateSupabaseUser(session?.user || null);
-        if (session?.user) {
-          syncPullSupabase(true);
-        }
-      });
+const SUPABASE_URL = "https://krmiinfqfluuhjxwvmue.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtybWlpbmZxZmx1dWhqeHd2bXVlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIyMzE2NjAsImV4cCI6MjA5NzgwNzY2MH0.OmiOdP4rYITvbuUyOwhxynybo4q35eiOXUBRrA8K9w0";
 
-      // Listen to auth state changes
-      supabaseClient.auth.onAuthStateChange((_event, session) => {
-        updateSupabaseUser(session?.user || null);
-      });
+function initSupabase() {
+  if (typeof supabase !== 'undefined') {
+    if (!supabaseClient) {
+      supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     }
+    
+    // Check session
+    supabaseClient.auth.getSession().then(({ data: { session } }) => {
+      updateSupabaseUser(session?.user || null);
+      if (session?.user) {
+        syncPullSupabase(true);
+      }
+    });
+
+    // Listen to auth state changes
+    supabaseClient.auth.onAuthStateChange((_event, session) => {
+      updateSupabaseUser(session?.user || null);
+    });
   }
 
   // Bind auth buttons click events
@@ -249,13 +247,11 @@ function initSupabase() {
 }
 
 async function handleSupabaseAuth(action) {
-  const url = document.getElementById('supabase-url').value.trim();
-  const key = document.getElementById('supabase-key').value.trim();
   const email = document.getElementById('supabase-email').value.trim();
   const password = document.getElementById('supabase-password').value.trim();
   const errorMsg = document.getElementById('sync-error-msg');
   
-  if (!url || !key || !email || !password) {
+  if (!email || !password) {
     errorMsg.textContent = 'All fields are required.';
     errorMsg.style.display = 'block';
     return;
@@ -264,9 +260,7 @@ async function handleSupabaseAuth(action) {
   errorMsg.style.display = 'none';
 
   if (!supabaseClient) {
-    supabaseClient = supabase.createClient(url, key);
-    localStorage.setItem('supabase_url', url);
-    localStorage.setItem('supabase_key', key);
+    supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
   }
 
   try {
