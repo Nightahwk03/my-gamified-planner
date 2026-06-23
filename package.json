@@ -1,0 +1,12 @@
+{
+  "name": "levelup-life",
+  "version": "1.0.0",
+  "description": "Gamified Planner",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "@netlify/blobs": "^8.0.0"
+  }
+}

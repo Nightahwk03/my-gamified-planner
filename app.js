@@ -19,6 +19,11 @@ let state = {
   history: []
 };
 
+// Netlify Identity Sync Variables
+let lastSyncTimestamp = null;
+let netlifyUser = null;
+let isCloudSynced = false;
+
 // UI Toggles & Form Elements
 const tabTaskBtn = document.getElementById('tab-task-btn');
 const tabHabitBtn = document.getElementById('tab-habit-btn');
@@ -80,20 +85,6 @@ const viewPanels = document.querySelectorAll('.view-panel');
 // Settings DOM Elements (now inside settings view panel)
 const settingsRankCard = document.getElementById('settings-rank-card');
 const resetAppBtn = document.getElementById('reset-app-btn');
-
-// Cloud Database Sync DOM Elements
-const syncDbUrlInput = document.getElementById('sync-db-url');
-const syncDbKeyInput = document.getElementById('sync-db-key');
-const syncEmailInput = document.getElementById('sync-email');
-const syncPasswordInput = document.getElementById('sync-password');
-const syncLoginBtn = document.getElementById('sync-login-btn');
-const syncSignupBtn = document.getElementById('sync-signup-btn');
-const syncLogoutBtn = document.getElementById('sync-logout-btn');
-const syncMessage = document.getElementById('sync-message');
-const syncLoggedOutContainer = document.getElementById('sync-logged-out-container');
-const syncLoggedInContainer = document.getElementById('sync-logged-in-container');
-const syncUserEmail = document.getElementById('sync-user-email');
-const syncLastUpdate = document.getElementById('sync-last-update');
 
 
 // Tab Navigation
@@ -160,127 +151,207 @@ function checkLoginStreak() {
   return changed;
 }
 
-let supabase = null;
-let lastSyncTimestamp = null;
+// ==========================================
+// Netlify Identity Cloud Sync Functions
+// ==========================================
 
-function initSupabase() {
-  const url = localStorage.getItem('supabase_url');
-  const key = localStorage.getItem('supabase_key');
-  if (url && key && window.supabase) {
-    try {
-      supabase = window.supabase.createClient(url, key);
-      return true;
-    } catch (e) {
-      console.error('[Sync] Failed to initialize Supabase client:', e);
-    }
-  }
-  return false;
+function resetToDefaultState() {
+  state = {
+    user: {
+      level: 1,
+      xp: 0,
+      coins: 0,
+      activePet: null,
+      petHunger: 100,
+      obtainedPokemon: [],
+      tasksCompletedForDrop: 0,
+      nextDropRequirement: Math.floor(Math.random() * 20) + 1,
+      inventory: {}
+    },
+    tasks: [],
+    habits: [],
+    categories: [
+      { id: "cat-work", name: "Work", color: "#4f46e5", stat: "focus" },
+      { id: "cat-health", name: "Health", color: "#16a34a", stat: "strength" },
+      { id: "cat-study", name: "Study", color: "#2563eb", stat: "intelligence" },
+      { id: "cat-personal", name: "Personal", color: "#d97706", stat: "agility" }
+    ],
+    history: []
+  };
+  localStorage.removeItem('gamified_todo_state');
 }
 
-async function checkSession() {
-  if (!supabase) return null;
+function updateSyncTimeLabel(timestamp) {
+  const syncTimeLabel = document.getElementById('sync-time-label');
+  if (!syncTimeLabel) return;
+  if (!timestamp) {
+    syncTimeLabel.textContent = 'Last synced: Never';
+    return;
+  }
   try {
-    const { data: { session } } = await supabase.auth.getSession();
-    return session;
+    const date = new Date(timestamp);
+    syncTimeLabel.textContent = `Last synced: ${date.toLocaleTimeString()} (${date.toLocaleDateString()})`;
   } catch (e) {
-    console.warn('[Sync] Failed to get session:', e);
-    return null;
+    syncTimeLabel.textContent = `Last synced: ${timestamp}`;
   }
 }
 
-async function syncPush() {
-  if (!supabase) return;
-  const session = await checkSession();
-  if (!session) return;
-  
+function updateNetlifyUser(user) {
+  netlifyUser = user;
+  const loggedOutState = document.getElementById('sync-logged-out-state');
+  const loggedInState = document.getElementById('sync-logged-in-state');
+  const emailDisplay = document.getElementById('sync-email-display');
+
+  if (user) {
+    if (loggedOutState) loggedOutState.style.display = 'none';
+    if (loggedInState) loggedInState.style.display = 'flex';
+    if (emailDisplay) emailDisplay.textContent = user.email;
+  } else {
+    if (loggedOutState) loggedOutState.style.display = 'flex';
+    if (loggedInState) loggedInState.style.display = 'none';
+    if (emailDisplay) emailDisplay.textContent = '';
+    lastSyncTimestamp = null;
+    updateSyncTimeLabel(null);
+  }
+}
+
+function initNetlifyIdentity() {
+  if (typeof window.netlifyIdentity === 'undefined') {
+    console.warn('[Gamification] Netlify Identity Widget script is not loaded.');
+    return;
+  }
+
+  // Initialize Netlify Identity
+  netlifyIdentity.init();
+
+  // Attach event handlers
+  netlifyIdentity.on('init', user => {
+    updateNetlifyUser(user);
+    if (user) {
+      syncPullNetlify();
+    }
+  });
+
+  netlifyIdentity.on('login', user => {
+    updateNetlifyUser(user);
+    netlifyIdentity.close();
+    syncPullNetlify(true);
+  });
+
+  netlifyIdentity.on('logout', () => {
+    updateNetlifyUser(null);
+    isCloudSynced = false;
+    resetToDefaultState();
+    render();
+  });
+
+  netlifyIdentity.on('error', err => {
+    console.error('[Gamification] Netlify Identity Error:', err);
+  });
+
+  // Bind auth buttons click events
+  const authBtn = document.getElementById('sync-auth-btn');
+  const logoutBtn = document.getElementById('sync-logout-btn');
+
+  if (authBtn) {
+    authBtn.addEventListener('click', () => {
+      netlifyIdentity.open();
+    });
+  }
+
+  if (logoutBtn) {
+    logoutBtn.addEventListener('click', () => {
+      netlifyIdentity.logout();
+    });
+  }
+}
+
+async function syncPushNetlify() {
+  if (!netlifyUser || typeof window.netlifyIdentity === 'undefined') return;
+  if (!isCloudSynced) {
+    console.log('[Gamification] Postponed push: Cloud state has not been pulled yet.');
+    return;
+  }
   try {
-    const { data, error } = await supabase
-      .from('user_progress')
-      .upsert({
-        id: session.user.id,
-        data: state,
+    const token = await netlifyIdentity.currentUser().jwt();
+    const res = await fetch('/.netlify/functions/sync', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        state: state,
         updated_at: new Date().toISOString()
       })
-      .select('updated_at')
-      .single();
-      
-    if (error) {
-      console.error('[Sync] Push error:', error.message);
-    } else if (data) {
-      console.log('[Sync] Push successful.');
-      lastSyncTimestamp = data.updated_at;
-      const timeStr = new Date(data.updated_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      if (syncLastUpdate) {
-        syncLastUpdate.innerText = `Last Sync: ${timeStr} (Uploaded)`;
-      }
+    });
+    if (res.ok) {
+      const result = await res.json();
+      lastSyncTimestamp = result.updated_at;
+      updateSyncTimeLabel(lastSyncTimestamp);
+      console.log('[Gamification] Successfully pushed data to Netlify Blobs.');
+    } else {
+      const errText = await res.text();
+      console.error('[Gamification] Netlify push failed:', res.status, errText);
+      alert('Cloud Sync Push Failed: ' + res.status + ' ' + errText);
     }
   } catch (err) {
-    console.error('[Sync] Failed to push:', err);
+    console.error('[Gamification] Error in syncPushNetlify:', err);
+    alert('Cloud Sync Push Error: ' + err.message);
   }
 }
 
-async function syncPull() {
-  if (!supabase) return false;
-  const session = await checkSession();
-  if (!session) return false;
-
+async function syncPullNetlify(forceRender = false) {
+  if (!netlifyUser || typeof window.netlifyIdentity === 'undefined') return;
   try {
-    const { data, error } = await supabase
-      .from('user_progress')
-      .select('data, updated_at')
-      .eq('id', session.user.id)
-      .maybeSingle();
-
-    if (error) {
-      console.error('[Sync] Pull error:', error.message);
-      return false;
-    }
-
-    if (data) {
-      if (lastSyncTimestamp === data.updated_at) {
-        return false; // No new changes
+    const token = await netlifyIdentity.currentUser().jwt();
+    const res = await fetch('/.netlify/functions/sync', {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`
       }
-      
-      console.log('[Sync] Pull successful. Updating local state.');
-      state = data.data;
-      lastSyncTimestamp = data.updated_at;
-      
-      // Mirror to local storage as backup
-      localStorage.setItem('gamified_todo_state', JSON.stringify(state));
-      
-      const timeStr = new Date(data.updated_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      if (syncLastUpdate) {
-        syncLastUpdate.innerText = `Last Sync: ${timeStr} (Downloaded)`;
+    });
+    if (res.ok) {
+      const result = await res.json();
+      if (result.empty) {
+        console.log('[Gamification] Netlify Blob is empty. Pushing current state.');
+        isCloudSynced = true; // Mark as synced so the push is allowed
+        await syncPushNetlify();
+      } else if (result.state && result.updated_at) {
+        const cloudTime = new Date(result.updated_at).getTime();
+        const lastLocalTime = lastSyncTimestamp ? new Date(lastSyncTimestamp).getTime() : 0;
+        
+        isCloudSynced = true; // Mark as synced once we successfully download/read the state
+        
+        // Overwrite if cloud state is newer, or if we force rendering (e.g. after login)
+        if (cloudTime > lastLocalTime || forceRender) {
+          console.log('[Gamification] Cloud state is newer. Syncing with local state.');
+          state = result.state;
+          lastSyncTimestamp = result.updated_at;
+          localStorage.setItem('gamified_todo_state', JSON.stringify(state));
+          updateSyncTimeLabel(lastSyncTimestamp);
+          render();
+        }
       }
-      return true;
     } else {
-      console.log('[Sync] No remote row found. Initializing with local data.');
-      await syncPush();
-      return true;
+      const errText = await res.text();
+      console.error('[Gamification] Netlify pull failed:', res.status, errText);
+      alert('Cloud Sync Pull Failed: ' + res.status + ' ' + errText);
     }
   } catch (err) {
-    console.error('[Sync] Failed to pull:', err);
-    return false;
+    console.error('[Gamification] Error in syncPullNetlify:', err);
+    alert('Cloud Sync Pull Error: ' + err.message);
   }
 }
 
 // Load DB Data from Server or LocalStorage
 async function loadData() {
   loadFromLocalStorage();
+  
+  // Initialize Netlify Identity Widget and login status
+  initNetlifyIdentity();
 
-  // Only communicate with local node server if running on localhost
-  const isLocalServer = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-  if (isLocalServer) {
-    try {
-      const res = await fetch('/api/data');
-      if (res.ok) {
-        state = await res.json();
-        console.log('[Gamification] State loaded successfully from server.');
-      }
-    } catch (err) {
-      console.warn('[Gamification] Failed to fetch from server, falling back to LocalStorage:', err.message);
-    }
-  }
+  // Removed local Node server communication to ensure Netlify Blobs is the only cloud truth
   
   // Migration: ensure all habits have days array
   if (state.habits) {
@@ -312,17 +383,6 @@ async function loadData() {
     delete state.user.stats;
   }
   
-  // Initialize Supabase if credentials exist
-  initSupabase();
-
-  // Pull latest data from cloud if user is logged in
-  if (supabase) {
-    const session = await checkSession();
-    if (session) {
-      await syncPull();
-    }
-  }
-
   // Update login streak and run background checks immediately on startup
   const streakChanged = checkLoginStreak();
   if (streakChanged) {
@@ -361,24 +421,12 @@ async function saveData() {
   // Render UI immediately
   render();
 
-  // If Supabase is connected, push changes to the cloud
-  if (supabase) {
-    syncPush();
+  // Push to Netlify Blobs if logged in
+  if (netlifyUser) {
+    await syncPushNetlify();
   }
 
-  const isLocalServer = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-  if (isLocalServer) {
-    try {
-      const res = await fetch('/api/data', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(state)
-      });
-      if (!res.ok) throw new Error('Failed to save state to server');
-    } catch (err) {
-      console.warn('[Gamification] Server save failed:', err.message);
-    }
-  }
+  // Netlify push is handled above. Removed local node server push.
 }
 
 // Calculate title based on Level
@@ -672,13 +720,13 @@ function renderQuestLog() {
   });
 }
 
-// Render Daily Rituals (Habits)
+// Render Habits
 function renderHabitsList() {
   const container = document.getElementById('habits-container');
   container.innerHTML = '';
 
   if (state.habits.length === 0) {
-    container.innerHTML = '<div style="font-size: 0.85rem; color: var(--text-muted); text-align: center; padding: 1rem 0;">No active rituals. Inscribe one to start!</div>';
+    container.innerHTML = '<div style="font-size: 0.85rem; color: var(--text-muted); text-align: center; padding: 1rem 0;">No active habits. Inscribe one to start!</div>';
     return;
   }
 
@@ -691,7 +739,7 @@ function renderHabitsList() {
   });
 
   if (todayHabits.length === 0) {
-    container.innerHTML = '<div style="font-size: 0.85rem; color: var(--text-muted); text-align: center; padding: 1.5rem 0;">Rest Day! No rituals scheduled for today. 💤</div>';
+    container.innerHTML = '<div style="font-size: 0.85rem; color: var(--text-muted); text-align: center; padding: 1.5rem 0;">Rest Day! No habits scheduled for today. 💤</div>';
     return;
   }
 
@@ -757,36 +805,32 @@ function renderHabitsList() {
     // Delete Button
     const delBtn = document.createElement('button');
     delBtn.className = 'btn-action btn-delete';
-    delBtn.innerHTML = '🗑️';
-    delBtn.style.padding = '0.5rem';
-    delBtn.style.borderRadius = '50%';
+    delBtn.innerText = 'Delete';
     delBtn.onclick = () => deleteHabit(habit.id);
 
     // Edit Button
     const editBtn = document.createElement('button');
-    editBtn.className = 'btn-action';
-    editBtn.innerHTML = '✏️';
-    editBtn.style.padding = '0.5rem';
-    editBtn.style.borderRadius = '50%';
+    editBtn.className = 'btn-action btn-edit';
+    editBtn.innerText = '✏️ Edit';
     editBtn.onclick = () => openEditHabit(habit.id);
 
     // Checkbox Button
     const checkBtn = document.createElement('button');
     
     if (isCompletedToday) {
-      checkBtn.className = 'check-in-btn checked';
-      checkBtn.innerHTML = '✓';
+      checkBtn.className = 'btn-action btn-complete checked';
+      checkBtn.innerText = '✓ Checked';
       checkBtn.disabled = true;
     } else if (!isScheduledToday) {
-      checkBtn.className = 'check-in-btn';
-      checkBtn.innerHTML = '💤';
+      checkBtn.className = 'btn-action';
+      checkBtn.innerText = '💤 Rest';
       checkBtn.disabled = true;
       checkBtn.style.opacity = '0.4';
       checkBtn.style.cursor = 'not-allowed';
       checkBtn.title = 'Not scheduled for today';
     } else {
-      checkBtn.className = 'check-in-btn';
-      checkBtn.innerHTML = '⏰';
+      checkBtn.className = 'btn-action btn-complete';
+      checkBtn.innerText = '⏰ Check In';
       checkBtn.disabled = false;
       checkBtn.style.opacity = '1';
       checkBtn.style.cursor = 'pointer';
@@ -1065,7 +1109,7 @@ habitForm.addEventListener('submit', async (e) => {
   };
 
   state.habits.push(newHabit);
-  logActivity(`Added Ritual: "${newHabit.title}"`);
+  logActivity(`Added Habit: "${newHabit.title}"`);
   habitForm.reset();
   // Reset selector pills to all active
   document.querySelectorAll('#habit-days-selector .day-pill').forEach(pill => pill.classList.add('active'));
@@ -1179,7 +1223,7 @@ async function checkInHabit(id) {
   if (state.user.coins === undefined) state.user.coins = 0;
   state.user.coins += coinsEarned;
 
-  adjustXP(xpEarned, `Performed Daily Ritual: "${habit.title}" (Earned ${coinsEarned}🪙, Streak 🔥 ${habit.streak})`);
+  adjustXP(xpEarned, `Performed Habit: "${habit.title}" (Earned ${coinsEarned}🪙, Streak 🔥 ${habit.streak})`);
   
   habit.lastCompletedDate = todayStr;
 
@@ -1194,7 +1238,7 @@ async function checkInHabit(id) {
 async function deleteHabit(id) {
   const habit = state.habits.find(h => h.id === id);
   if (habit) {
-    logActivity(`Deleted Ritual: "${habit.title}"`);
+    logActivity(`Deleted Habit: "${habit.title}"`);
   }
   state.habits = state.habits.filter(h => h.id !== id);
   await saveData();
@@ -1334,7 +1378,7 @@ async function performTickChecks() {
       if (notCompletedOnTime && notPenalizedYet) {
         if (habit.streak > 0 || habit.lastCompletedDate !== null) {
           habit.streak = 0;
-          adjustXP(-20, `Missed Daily Ritual Penalty: "${habit.title}"`);
+          adjustXP(-20, `Missed Habit Penalty: "${habit.title}"`);
           habit.lastPenalizedDate = lastScheduledDateStr;
           changed = true;
         }
@@ -1536,7 +1580,7 @@ editHabitForm.addEventListener('submit', async (e) => {
   const editActivePills = document.querySelectorAll('#edit-habit-days-selector .day-pill.active');
   const days = Array.from(editActivePills).map(p => parseInt(p.getAttribute('data-day')));
   if (days.length === 0) {
-    alert('Please select at least one scheduled day for this ritual.');
+    alert('Please select at least one scheduled day for this habit.');
     return;
   }
 
@@ -1544,7 +1588,7 @@ editHabitForm.addEventListener('submit', async (e) => {
     habit.title = editHabitTitle.value.trim();
     habit.categoryId = editHabitCategory.value;
     habit.days = days;
-    logActivity(`Edited Ritual: "${habit.title}"`);
+    logActivity(`Edited Habit: "${habit.title}"`);
   }
 
   editHabitModal.classList.remove('active');
@@ -1754,34 +1798,9 @@ function renderSettings() {
   }
   // Always ensure dark theme class is removed
   document.body.classList.remove('dark-theme');
-
-  // Cloud Database Sync UI update
-  updateSyncUI();
 }
 
-async function updateSyncUI() {
-  if (!syncDbUrlInput) return; // Not on settings page or elements missing
-  
-  // Prefill credentials if present
-  if (!syncDbUrlInput.value) {
-    syncDbUrlInput.value = localStorage.getItem('supabase_url') || '';
-  }
-  if (!syncDbKeyInput.value) {
-    syncDbKeyInput.value = localStorage.getItem('supabase_key') || '';
-  }
 
-  const session = await checkSession();
-  if (session) {
-    // Logged in
-    if (syncLoggedOutContainer) syncLoggedOutContainer.style.display = 'none';
-    if (syncLoggedInContainer) syncLoggedInContainer.style.display = 'block';
-    if (syncUserEmail) syncUserEmail.innerText = session.user.email;
-  } else {
-    // Logged out
-    if (syncLoggedOutContainer) syncLoggedOutContainer.style.display = 'block';
-    if (syncLoggedInContainer) syncLoggedInContainer.style.display = 'none';
-  }
-}
 
 // --- COLLAPSIBLE NAVIGATION SIDEBAR & ROUTING SYSTEM ---
 function initSidebarAndRouting() {
@@ -1792,8 +1811,38 @@ function initSidebarAndRouting() {
   }
 
   // Active View State Persistence (default is dashboard)
-  const savedView = localStorage.getItem('active_view') || 'dashboard';
+  let hash = window.location.hash.replace('#', '');
+  
+  // If the hash is a Netlify Identity token, do not route to it!
+  const isNetlifyToken = hash.startsWith('confirmation_token=') || 
+                         hash.startsWith('invite_token=') || 
+                         hash.startsWith('recovery_token=') || 
+                         hash.startsWith('access_token=') || 
+                         hash.startsWith('error=');
+                         
+  if (isNetlifyToken) {
+    hash = ''; // Clear it so we fallback to saved view or dashboard
+  }
+
+  const savedView = hash || localStorage.getItem('active_view') || 'dashboard';
   switchView(savedView);
+
+  // Listen for hash changes to support browser navigation (back/forward)
+  window.addEventListener('hashchange', () => {
+    const currentHash = window.location.hash.replace('#', '');
+    const isNetlifyTokenChange = currentHash.startsWith('confirmation_token=') || 
+                                 currentHash.startsWith('invite_token=') || 
+                                 currentHash.startsWith('recovery_token=') || 
+                                 currentHash.startsWith('access_token=') || 
+                                 currentHash.startsWith('error=');
+    if (currentHash && !isNetlifyTokenChange) {
+      switchView(currentHash);
+    } else if (!currentHash) {
+      // If hash was cleared (e.g. by Netlify Identity widget), go to saved view
+      const savedView = localStorage.getItem('active_view') || 'dashboard';
+      switchView(savedView);
+    }
+  });
 
   // Set up Event Listeners
   if (sidebarToggleBtn) {
@@ -1828,110 +1877,29 @@ function initSidebarAndRouting() {
     });
   });
 
-  // Supabase Cloud Sync event listeners
-  if (syncLoginBtn) {
-    syncLoginBtn.addEventListener('click', async () => {
-      const url = syncDbUrlInput.value.trim();
-      const key = syncDbKeyInput.value.trim();
-      const email = syncEmailInput.value.trim();
-      const password = syncPasswordInput.value.trim();
-
-      if (!url || !key || !email || !password) {
-        if (syncMessage) syncMessage.innerText = 'All fields are required.';
-        return;
-      }
-
-      if (syncMessage) syncMessage.innerText = 'Connecting...';
-
-      localStorage.setItem('supabase_url', url);
-      localStorage.setItem('supabase_key', key);
-
-      const initSuccess = initSupabase();
-      if (!initSuccess) {
-        if (syncMessage) syncMessage.innerText = 'Failed to initialize Supabase client.';
-        return;
-      }
-
-      try {
-        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) {
-          if (syncMessage) syncMessage.innerText = error.message;
-        } else if (data.session) {
-          if (syncMessage) syncMessage.innerText = '';
-          syncPasswordInput.value = '';
-          await syncPull();
-          render();
-        }
-      } catch (err) {
-        if (syncMessage) syncMessage.innerText = err.message || 'An error occurred during login.';
-      }
-    });
-  }
-
-  if (syncSignupBtn) {
-    syncSignupBtn.addEventListener('click', async () => {
-      const url = syncDbUrlInput.value.trim();
-      const key = syncDbKeyInput.value.trim();
-      const email = syncEmailInput.value.trim();
-      const password = syncPasswordInput.value.trim();
-
-      if (!url || !key || !email || !password) {
-        if (syncMessage) syncMessage.innerText = 'All fields are required.';
-        return;
-      }
-
-      if (syncMessage) syncMessage.innerText = 'Signing up...';
-
-      localStorage.setItem('supabase_url', url);
-      localStorage.setItem('supabase_key', key);
-
-      const initSuccess = initSupabase();
-      if (!initSuccess) {
-        if (syncMessage) syncMessage.innerText = 'Failed to initialize Supabase client.';
-        return;
-      }
-
-      try {
-        const { data, error } = await supabase.auth.signUp({ email, password });
-        if (error) {
-          if (syncMessage) syncMessage.innerText = error.message;
-        } else {
-          if (data.session) {
-            if (syncMessage) syncMessage.innerText = '';
-            syncPasswordInput.value = '';
-            await syncPush();
-            render();
-          } else {
-            if (syncMessage) {
-              syncMessage.style.color = 'var(--success)';
-              syncMessage.innerText = 'Check your email for confirmation!';
-            }
-          }
-        }
-      } catch (err) {
-        if (syncMessage) syncMessage.innerText = err.message || 'An error occurred during sign up.';
-      }
-    });
-  }
-
-  if (syncLogoutBtn) {
-    syncLogoutBtn.addEventListener('click', async () => {
-      if (supabase) {
-        await supabase.auth.signOut();
-        supabase = null;
-      }
-      localStorage.removeItem('supabase_url');
-      localStorage.removeItem('supabase_key');
-      localStorage.removeItem('active_view');
-      lastSyncTimestamp = null;
-      window.location.reload();
-    });
-  }
 }
 
 function switchView(viewName) {
-  // Save current active view
+  // Save current active view (only if it is a valid view, not a token)
+  const isNetlifyToken = viewName.startsWith('confirmation_token=') || 
+                         viewName.startsWith('invite_token=') || 
+                         viewName.startsWith('recovery_token=') || 
+                         viewName.startsWith('access_token=') || 
+                         viewName.startsWith('error=');
+  if (isNetlifyToken) return;
+
   localStorage.setItem('active_view', viewName);
+  
+  // Sync the URL hash (only if we're not inside a Netlify token redirect)
+  const currentHash = window.location.hash.replace('#', '');
+  const isCurrentHashToken = currentHash.startsWith('confirmation_token=') || 
+                             currentHash.startsWith('invite_token=') || 
+                             currentHash.startsWith('recovery_token=') || 
+                             currentHash.startsWith('access_token=') || 
+                             currentHash.startsWith('error=');
+  if (!isCurrentHashToken && window.location.hash !== `#${viewName}`) {
+    window.location.hash = viewName;
+  }
 
   // Toggle active class on menu items
   navItems.forEach(item => {
@@ -2016,16 +1984,10 @@ window.onload = () => {
   loadData();
   renderPokedex();
 
-  // Periodic Cloud Sync Check (every 30 seconds)
-  setInterval(async () => {
-    if (supabase) {
-      const session = await checkSession();
-      if (session) {
-        const success = await syncPull();
-        if (success) {
-          render();
-        }
-      }
+  // Periodic check/sync every 30 seconds
+  setInterval(() => {
+    if (netlifyUser) {
+      syncPullNetlify();
     }
   }, 30000);
 };

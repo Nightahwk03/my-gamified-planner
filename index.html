@@ -7,6 +7,7 @@
   <meta name="theme-color" content="#1a1a2e">
   <title>Level Up Life - Gamified Planner</title>
   <link rel="stylesheet" href="style.css">
+  <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
 </head>
 <body>
 
@@ -80,11 +81,11 @@
   <!-- Habit Edit Modal Overlay -->
   <div id="edit-habit-modal" class="levelup-overlay">
     <div class="levelup-modal" style="text-align: left; max-width: 450px; padding: 2rem;">
-      <h2 class="section-title" style="border: none; padding-bottom: 0; margin-bottom: 1rem;">✏️ Edit Ritual (Habit)</h2>
+      <h2 class="section-title" style="border: none; padding-bottom: 0; margin-bottom: 1rem;">✏️ Edit Habit</h2>
       <form id="edit-habit-form">
         <input type="hidden" id="edit-habit-id">
         <div class="form-group">
-          <label for="edit-habit-title">Ritual Title</label>
+          <label for="edit-habit-title">Habit Title</label>
           <input type="text" id="edit-habit-title" required>
         </div>
         <div class="form-group">
@@ -224,7 +225,7 @@
           <div class="dashboard-main">
             <!-- Daily Habits Tracker Grid -->
             <section id="habits-section" class="glass-card">
-              <h2 class="section-title">🔁 Today's Rituals (Habits)</h2>
+              <h2 class="section-title">🔁 Today's Habits</h2>
               <div class="habits-container" id="habits-container">
                 <!-- Dynamic habits checklists populated here -->
               </div>
@@ -295,7 +296,7 @@
     <section class="glass-card">
       <div class="creator-tabs">
         <button class="tab-btn active" id="tab-task-btn">⚔️ New Quest</button>
-        <button class="tab-btn" id="tab-habit-btn">🔁 Daily Ritual</button>
+        <button class="tab-btn" id="tab-habit-btn">🔁 Habit</button>
       </div>
       <!-- Create Task Form -->
       <form id="task-creator-form">
@@ -331,7 +332,7 @@
       <!-- Create Habit Form -->
       <form id="habit-creator-form" style="display: none;">
         <div class="form-group">
-          <label for="habit-title">Ritual Title</label>
+          <label for="habit-title">Habit Title</label>
           <input type="text" id="habit-title" placeholder="E.g., Read 10 Pages, Drink Water" required>
         </div>
         <div class="form-group">
@@ -350,7 +351,7 @@
             <button type="button" class="day-pill active" data-day="0">S</button>
           </div>
         </div>
-        <button type="submit" class="btn-primary">Inscribe Ritual</button>
+        <button type="submit" class="btn-primary">Inscribe Habit</button>
       </form>
     </section>
 
@@ -447,45 +448,25 @@
           </div>
 
 
-          <!-- Cloud Sync Card -->
-          <div class="settings-card" style="margin-bottom: 1.5rem; background: rgba(255,255,255,0.03); border: 1px solid rgba(0,0,0,0.06); padding: 1.25rem; border-radius: 12px;">
-            <span class="settings-card-label" style="font-size: 0.85rem; color: var(--text-muted); font-weight: 500;">☁️ Cloud Sync (Supabase)</span>
-            
-            <!-- Not Logged In View -->
-            <div id="sync-logged-out-container">
-              <div class="form-group" style="margin-top: 0.5rem; margin-bottom: 0.75rem;">
-                <label for="sync-db-url" style="font-size: 0.75rem;">Supabase Project URL</label>
-                <input type="text" id="sync-db-url" placeholder="https://your-project.supabase.co" style="padding: 0.5rem; font-size: 0.8rem;">
-              </div>
-              <div class="form-group" style="margin-bottom: 0.75rem;">
-                <label for="sync-db-key" style="font-size: 0.75rem;">Supabase Anon Public Key</label>
-                <input type="text" id="sync-db-key" placeholder="eyJhbGciOiJIUzI1NiIsIn..." style="padding: 0.5rem; font-size: 0.8rem;">
-              </div>
-              <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 0.75rem;">
-                <div class="form-group" style="margin-bottom: 0;">
-                  <label for="sync-email" style="font-size: 0.75rem;">Email</label>
-                  <input type="text" id="sync-email" placeholder="email@example.com" style="padding: 0.5rem; font-size: 0.8rem;">
-                </div>
-                <div class="form-group" style="margin-bottom: 0;">
-                  <label for="sync-password" style="font-size: 0.75rem;">Password</label>
-                  <input type="password" id="sync-password" placeholder="••••••••" style="padding: 0.5rem; font-size: 0.8rem; width: 100%; border: 1px solid #cbd5e1; border-radius: 8px; outline: none; background: #fff; color: #0f172a;">
-                </div>
-              </div>
-              <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
-                <button type="button" id="sync-login-btn" class="btn-primary" style="flex: 1; margin: 0; padding: 0.6rem; font-size: 0.8rem; line-height: 1;">🔑 Log In</button>
-                <button type="button" id="sync-signup-btn" class="btn-action" style="flex: 1; padding: 0.6rem; font-size: 0.8rem; border-radius: 8px; line-height: 1;">📝 Sign Up</button>
-              </div>
-              <div id="sync-message" style="font-size: 0.75rem; color: #ff4757; margin-top: 0.5rem; font-weight: 600; text-align: center;"></div>
-            </div>
 
-            <!-- Logged In View -->
-            <div id="sync-logged-in-container" style="display: none; margin-top: 0.75rem;">
-              <div style="font-size: 0.9rem; font-weight: 600; color: var(--text-main); display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem;">
-                <span id="sync-user-email">email@example.com</span>
-                <span class="category-badge" style="background: rgba(46, 213, 115, 0.1); color: var(--success); border: 1px solid rgba(46, 213, 115, 0.3);">🟢 Synced</span>
+
+          <!-- Cloud Sync (Netlify) Card -->
+          <div class="settings-card" id="settings-sync-card" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(0,0,0,0.06); padding: 1.25rem; border-radius: 12px; margin-bottom: 1.5rem;">
+            <span class="settings-card-label" style="font-size: 0.85rem; color: var(--text-muted); font-weight: 500;">☁️ Cloud Sync (Netlify)</span>
+            <div id="sync-status-container" style="margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.5rem;">
+              <!-- When logged out -->
+              <div id="sync-logged-out-state" style="display: flex; flex-direction: column; gap: 0.5rem;">
+                <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0;">Log in or sign up to cross-sync your progress across devices via email and password.</p>
+                <button id="sync-auth-btn" class="btn-primary" style="margin: 0; padding: 0.6rem; font-size: 0.85rem;">🔑 Log In / Sign Up</button>
               </div>
-              <div id="sync-last-update" style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 1rem;">Last Sync: Just Now</div>
-              <button type="button" id="sync-logout-btn" class="btn-primary btn-delete" style="width: 100%; margin: 0; padding: 0.6rem; font-size: 0.8rem; background: linear-gradient(135deg, #ff4757, #ff6b81);">🚪 Log Out</button>
+              <!-- When logged in -->
+              <div id="sync-logged-in-state" style="display: none; flex-direction: column; gap: 0.5rem;">
+                <p style="font-size: 0.85rem; font-weight: 600; color: var(--text-main); margin: 0; display: flex; align-items: center; gap: 0.35rem;">
+                  <span id="sync-status-dot" style="color: #2ecc71;">🟢</span> Logged in as: <span id="sync-email-display">user@example.com</span>
+                </p>
+                <p style="font-size: 0.75rem; color: var(--text-muted); margin: 0;" id="sync-time-label">Last synced: Never</p>
+                <button id="sync-logout-btn" class="btn-primary btn-delete" style="margin: 0; padding: 0.6rem; font-size: 0.85rem; background: linear-gradient(135deg, #e67e22, #f39c12);">🚪 Log Out</button>
+              </div>
             </div>
           </div>
 
@@ -541,8 +522,7 @@
     }
   </style>
 
-  <!-- Supabase client library -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
   <!-- Load Game Client Application -->
   <script src="sprites.js"></script>
   <script src="berries.js"></script>
