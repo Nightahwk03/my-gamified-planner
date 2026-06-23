@@ -1,0 +1,21 @@
+{
+  "name": "Level Up Life",
+  "short_name": "Level Up",
+  "description": "A Gamified Task Planner and Habit Tracker",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#1a1a2e",
+  "theme_color": "#0984e3",
+  "icons": [
+    {
+      "src": "pokemon-sprites/1.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "pokemon-sprites/25.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

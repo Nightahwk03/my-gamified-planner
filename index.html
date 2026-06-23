@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#1a1a2e">
+  <title>Level Up Life - Gamified Planner</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Confetti Celebration Canvas -->
+  <canvas id="confetti-canvas"></canvas>
+
+  <!-- Top Mobile Header (visible only on mobile) -->
+  <header class="app-header">
+    <button id="mobile-menu-btn" class="mobile-menu-btn">☰</button>
+    <div class="header-logo">
+      <span class="logo-icon">🎮</span>
+      <span class="logo-text">Level Up Life</span>
+    </div>
+  </header>
+
+  <!-- Level Up Modal Overlay -->
+  <div id="levelup-overlay" class="levelup-overlay">
+    <div class="levelup-modal">
+      <div class="levelup-icon">🏆</div>
+      <h2 class="levelup-title">Level Up!</h2>
+      <p class="levelup-text">You have ascended to level <span id="popup-new-level">2</span>!</p>
+      
+      <!-- Stats removed -->
+      
+      <button class="btn-dismiss" id="levelup-close-btn">Continue Quest</button>
+    </div>
+  </div>
+
+  <!-- Task Edit Modal Overlay -->
+  <div id="edit-task-modal" class="levelup-overlay">
+    <div class="levelup-modal" style="text-align: left; max-width: 500px; padding: 2rem;">
+      <h2 class="section-title" style="border: none; padding-bottom: 0; margin-bottom: 1rem;">✏️ Edit Quest (Task)</h2>
+      <form id="edit-task-form">
+        <input type="hidden" id="edit-task-id">
+        <div class="form-group">
+          <label for="edit-task-title">Quest Title</label>
+          <input type="text" id="edit-task-title" required>
+        </div>
+        <div class="form-group">
+          <label for="edit-task-desc">Objective Description (Optional)</label>
+          <textarea id="edit-task-desc" style="min-height: 60px;"></textarea>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="edit-task-priority">Priority Level</label>
+            <select id="edit-task-priority" required>
+              <option value="low">Low (1.0x XP)</option>
+              <option value="medium">Medium (1.5x XP)</option>
+              <option value="high">High (2.0x XP)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="edit-task-category">Tagged Category</label>
+            <select id="edit-task-category" required>
+              <!-- Populated dynamically -->
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="edit-task-deadline">Timeline Deadline</label>
+          <input type="datetime-local" id="edit-task-deadline" required>
+        </div>
+        <div style="display: flex; gap: 0.5rem; margin-top: 1.5rem;">
+          <button type="submit" class="btn-primary" style="flex: 1; margin: 0;">Save Changes</button>
+          <button type="button" id="edit-task-cancel-btn" class="btn-action" style="padding: 0.75rem 1.5rem; border-radius: 8px;">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Habit Edit Modal Overlay -->
+  <div id="edit-habit-modal" class="levelup-overlay">
+    <div class="levelup-modal" style="text-align: left; max-width: 450px; padding: 2rem;">
+      <h2 class="section-title" style="border: none; padding-bottom: 0; margin-bottom: 1rem;">✏️ Edit Ritual (Habit)</h2>
+      <form id="edit-habit-form">
+        <input type="hidden" id="edit-habit-id">
+        <div class="form-group">
+          <label for="edit-habit-title">Ritual Title</label>
+          <input type="text" id="edit-habit-title" required>
+        </div>
+        <div class="form-group">
+          <label for="edit-habit-category">Tagged Category</label>
+          <select id="edit-habit-category" required>
+            <!-- Populated dynamically -->
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Scheduled Days</label>
+          <div class="day-selector" id="edit-habit-days-selector">
+            <button type="button" class="day-pill active" data-day="1">M</button>
+            <button type="button" class="day-pill active" data-day="2">T</button>
+            <button type="button" class="day-pill active" data-day="3">W</button>
+            <button type="button" class="day-pill active" data-day="4">T</button>
+            <button type="button" class="day-pill active" data-day="5">F</button>
+            <button type="button" class="day-pill active" data-day="6">S</button>
+            <button type="button" class="day-pill active" data-day="0">S</button>
+          </div>
+        </div>
+        <div style="display: flex; gap: 0.5rem; margin-top: 1.5rem;">
+          <button type="submit" class="btn-primary" style="flex: 1; margin: 0;">Save Changes</button>
+          <button type="button" id="edit-habit-cancel-btn" class="btn-action" style="padding: 0.75rem 1.5rem; border-radius: 8px;">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Entire Screen Layout Wrapper -->
+  <div class="app-layout">
+
+    <!-- Collapsible Left Navigation Sidebar -->
+    <aside class="nav-sidebar" id="nav-sidebar">
+      <div class="nav-sidebar-header">
+        <div class="header-logo">
+          <span class="logo-icon">🎮</span>
+          <span class="logo-text">Level Up Life</span>
+        </div>
+        <button id="sidebar-toggle-btn" class="sidebar-toggle-btn">◀</button>
+      </div>
+      <nav class="nav-menu">
+  <button class="nav-item active" data-view="dashboard">
+    <span class="nav-icon">📊</span>
+    <span class="nav-label">Dashboard</span>
+  </button>
+  <button class="nav-item" data-view="add-new">
+    <span class="nav-icon">➕</span>
+    <span class="nav-label">Add New</span>
+  </button>
+  <button class="nav-item" data-view="activity-log">
+    <span class="nav-icon">📜</span>
+    <span class="nav-label">Activity Log</span>
+  </button>
+  <button class="nav-item" data-view="bag">
+    <span class="nav-icon">🎒</span>
+    <span class="nav-label">Bag</span>
+  </button>
+  <button class="nav-item" data-view="shop">
+    <span class="nav-icon">🛍️</span>
+    <span class="nav-label">Shop</span>
+  </button>
+  <button class="nav-item" data-view="pokedex">
+    <span class="nav-icon">🐾</span>
+    <span class="nav-label">Pokedex</span>
+  </button>
+  <button class="nav-item" data-view="settings">
+    <span class="nav-icon">⚙️</span>
+    <span class="nav-label">Settings</span>
+  </button>
+</nav>
+    </aside>
+
+    <!-- Navigation Sidebar Overlay backdrop for mobile screen -->
+    <div id="sidebar-backdrop" class="settings-backdrop"></div>
+
+    <!-- Main Content Wrapper -->
+    <div class="main-wrapper">
+
+      <!-- View Panel: Dashboard -->
+      <div id="view-dashboard" class="view-panel active">
+        <div class="dashboard-grid">
+          
+          <!-- Left Column: Profile, stats, etc. -->
+          <div class="dashboard-sidebar">
+            <!-- Profile & Level Info Card -->
+            <section class="glass-card profile-card" id="profile-card">
+              <button id="rank-info-btn" class="btn-rank">👑 Rank</button>
+              <div class="avatar-wrapper">
+                <div class="avatar">🧙‍♂️</div>
+                <div class="level-badge" id="user-level-badge">LVL 1</div>
+              </div>
+              <h1 class="user-name" id="user-name-display">Adventurer</h1>
+              <p class="user-title" id="user-title-display">Novice Quest Seeker</p>
+
+              <!-- EXP Progression Bar -->
+              <div class="xp-container">
+                <div class="xp-labels">
+                  <span>Experience</span>
+                  <span class="xp-current" id="xp-numbers-display">0 / 200 XP</span>
+                </div>
+                <div class="xp-bar-bg">
+                  <div class="xp-bar-fill" id="xp-bar-fill"></div>
+                </div>
+              </div>
+
+              <!-- My Pet Card -->
+              <div class="pet-card" style="margin-top: 1.5rem; background: rgba(255,255,255,0.03); border: 1px solid rgba(0,0,0,0.05); border-radius: 12px; padding: 1.5rem; text-align: center;">
+                <h3 style="font-size: 1.1rem; margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between;">
+                  <span>🐾 My Pet</span>
+                  <span style="font-size: 0.9rem; color: #f1c40f; font-weight: bold;" id="coin-balance-display">0 🪙</span>
+                </h3>
+                
+                <div id="pet-display-area" style="min-height: 120px; display: flex; align-items: center; justify-content: center; margin-bottom: 1rem;">
+                  <span style="color: var(--text-muted); font-size: 0.9rem;">Select a Pet from the Pokedex!</span>
+                </div>
+                
+                <div id="pet-controls" style="display: none;">
+                  <div style="text-align: left; margin-bottom: 0.5rem; font-size: 0.85rem; font-weight: 600; color: var(--text-main);">
+                    Hunger Level: <span id="pet-hunger-text">100%</span>
+                  </div>
+                  <div class="xp-bar-bg" style="height: 10px; margin-bottom: 1rem; border-radius: 5px;">
+                    <div class="xp-bar-fill" id="pet-hunger-bar" style="width: 100%; background: linear-gradient(90deg, #ff7675, #d63031);"></div>
+                  </div>
+                  
+                  <div style="font-size: 0.85rem; font-weight: 600; color: var(--text-main); margin-bottom: 0.5rem; text-align: left;">
+                    My Berries:
+                  </div>
+                  <div id="inventory-grid" style="display: flex; gap: 0.5rem; overflow-x: auto; padding-bottom: 0.5rem;">
+                    <span style="font-size: 0.8rem; color: var(--text-muted);">No berries in inventory. Buy some from the shop!</span>
+                  </div>
+                </div>
+              </div>
+            </section>
+          </div>
+
+          <!-- Right Column: Today's Tasks & Habits checklist -->
+          <div class="dashboard-main">
+            <!-- Daily Habits Tracker Grid -->
+            <section id="habits-section" class="glass-card">
+              <h2 class="section-title">🔁 Today's Rituals (Habits)</h2>
+              <div class="habits-container" id="habits-container">
+                <!-- Dynamic habits checklists populated here -->
+              </div>
+            </section>
+
+            <!-- Task Kanban / Board Section -->
+            <section id="tasks-section" class="glass-card">
+              <div class="board-header">
+                <h2 class="section-title" style="margin-bottom: 0; border: none; padding: 0;">⚔️ Active Quests</h2>
+                
+                <div class="filters-wrapper">
+                  <!-- Sort Tasks -->
+                  <select id="sort-tasks" class="filter-select">
+                    <option value="deadline-asc">📅 Sort: Deadline (Soonest)</option>
+                    <option value="deadline-desc">📅 Sort: Deadline (Latest)</option>
+                    <option value="priority-desc">🛡️ Sort: Priority (High → Low)</option>
+                    <option value="priority-asc">🛡️ Sort: Priority (Low → High)</option>
+                    <option value="created-desc">⏳ Sort: Created (Newest)</option>
+                    <option value="created-asc">⏳ Sort: Created (Oldest)</option>
+                  </select>
+                  <!-- Filter by Category -->
+                  <select id="filter-category" class="filter-select">
+                    <option value="all">🏷️ All Categories</option>
+                  </select>
+                  <!-- Filter by Priority -->
+                  <select id="filter-priority" class="filter-select">
+                    <option value="all">🛡️ All Priorities</option>
+                    <option value="high">High Only</option>
+                    <option value="medium">Medium Only</option>
+                    <option value="low">Low Only</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="board-columns">
+                <!-- Active Column -->
+                <div class="board-column">
+                  <h3 class="column-title">
+                    <span>In Progress</span>
+                    <span class="column-count" id="active-tasks-count">0</span>
+                  </h3>
+                  <div class="board-column" id="active-tasks-list">
+                    <!-- Active tasks populated here -->
+                  </div>
+                </div>
+
+                <!-- Completed Column -->
+                <div class="board-column">
+                  <h3 class="column-title">
+                    <span>Completed</span>
+                    <span class="column-count" id="completed-tasks-count">0</span>
+                  </h3>
+                  <div class="board-column" id="completed-tasks-list">
+                    <!-- Completed tasks populated here -->
+                  </div>
+                </div>
+              </div>
+            </section>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- View Panel: Add New -->
+<div id="view-add-new" class="view-panel">
+  <div style="max-width: 800px; margin: 0 auto; display: flex; flex-direction: column; gap: 1.5rem;">
+    <!-- Top: Forms -->
+    <section class="glass-card">
+      <div class="creator-tabs">
+        <button class="tab-btn active" id="tab-task-btn">⚔️ New Quest</button>
+        <button class="tab-btn" id="tab-habit-btn">🔁 Daily Ritual</button>
+      </div>
+      <!-- Create Task Form -->
+      <form id="task-creator-form">
+        <div class="form-group">
+          <label for="task-title">Quest Title</label>
+          <input type="text" id="task-title" placeholder="What is your objective?" required>
+        </div>
+        <div class="form-group">
+          <label for="task-desc">Objective Description (Optional)</label>
+          <textarea id="task-desc" placeholder="Describe the details of this adventure..."></textarea>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="task-priority">Priority Level</label>
+            <select id="task-priority" required>
+              <option value="low">Low (1.0x XP)</option>
+              <option value="medium" selected>Medium (1.5x XP)</option>
+              <option value="high">High (2.0x XP)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="task-category">Tagged Category</label>
+            <select id="task-category" required></select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="task-deadline">Timeline Deadline</label>
+          <input type="datetime-local" id="task-deadline" required>
+        </div>
+        <button type="submit" class="btn-primary">Inscribe Quest</button>
+      </form>
+
+      <!-- Create Habit Form -->
+      <form id="habit-creator-form" style="display: none;">
+        <div class="form-group">
+          <label for="habit-title">Ritual Title</label>
+          <input type="text" id="habit-title" placeholder="E.g., Read 10 Pages, Drink Water" required>
+        </div>
+        <div class="form-group">
+          <label for="habit-category">Tagged Category</label>
+          <select id="habit-category" required></select>
+        </div>
+        <div class="form-group">
+          <label>Scheduled Days</label>
+          <div class="day-selector" id="habit-days-selector">
+            <button type="button" class="day-pill active" data-day="1">M</button>
+            <button type="button" class="day-pill active" data-day="2">T</button>
+            <button type="button" class="day-pill active" data-day="3">W</button>
+            <button type="button" class="day-pill active" data-day="4">T</button>
+            <button type="button" class="day-pill active" data-day="5">F</button>
+            <button type="button" class="day-pill active" data-day="6">S</button>
+            <button type="button" class="day-pill active" data-day="0">S</button>
+          </div>
+        </div>
+        <button type="submit" class="btn-primary">Inscribe Ritual</button>
+      </form>
+    </section>
+
+    <!-- Bottom Section: Category Master -->
+    <section class="glass-card">
+      <h2 class="section-title">🏷️ Category Master</h2>
+      
+      <form id="category-form" style="display: flex; gap: 0.5rem; margin-bottom: 0.75rem;">
+        <input type="text" id="category-name-input" placeholder="New Category..." required style="flex: 1; padding: 0.4rem 0.6rem; font-size: 0.8rem;">
+        <!-- Stat selection removed -->
+        <input type="color" id="category-color-input" value="#70a1ff" style="width: 32px; height: 32px; border: none; padding: 0; background: none; cursor: pointer; border-radius: 4px;">
+        <button type="submit" id="category-submit-btn" class="btn-action" style="padding: 0 0.75rem;">+</button>
+      </form>
+
+      <div class="categories-list" id="categories-list"></div>
+    </section>
+  </div>
+</div>
+
+      <!-- View Panel: Activity Log -->
+      <div id="view-activity-log" class="view-panel">
+        <section class="glass-card" style="max-width: 800px; margin: 0 auto;">
+          <h2 class="section-title">📜 Activity Log</h2>
+          <div class="history-feed" id="history-feed">
+            <div style="font-size: 0.8rem; color: var(--text-muted); text-align: center; margin-top: 1rem;">No activities recorded yet.</div>
+          </div>
+        </section>
+      </div>
+
+      <!-- View Panel: Bag -->
+      <div id="view-bag" class="view-panel">
+        <section class="glass-card" style="max-width: 1000px; margin: 0 auto; text-align: center; padding: 2rem;">
+          <h2 class="section-title" style="border: none; margin-bottom: 1.5rem; justify-content: center;">🎒 My Bag</h2>
+          <div id="bag-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 1rem; justify-items: center; max-height: 65vh; overflow-y: auto; padding: 1rem; background: rgba(0,0,0,0.02); border-radius: 12px;">
+            <!-- Berries will be injected here -->
+          </div>
+        </section>
+      </div>
+
+      <!-- View Panel: Shop (Placeholder) -->
+      <div id="view-shop" class="view-panel">
+        <section class="glass-card" style="max-width: 1000px; margin: 0 auto;">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem;">
+            <h2 class="section-title" style="border: none; margin: 0;">🛍️ Berry Shop</h2>
+            <div style="font-weight: bold; color: #f1c40f; font-size: 1.2rem;" id="shop-coin-balance">0 🪙</div>
+          </div>
+          <div id="shop-container" style="display: flex; flex-direction: column; gap: 2rem;">
+            <!-- Categories will be injected here -->
+          </div>
+        </section>
+      </div>
+
+      <!-- View Panel: Pokedex -->
+      <div id="view-pokedex" class="view-panel">
+        <section class="glass-card pokedex-container" style="max-width: 1000px; margin: 0 auto; text-align: center; padding: 2rem;">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem;">
+            <h2 class="section-title" style="border: none; margin: 0;">🐾 Quest Pokedex</h2>
+            <select id="pokedex-filter-select" style="padding: 0.5rem; border-radius: 8px; border: 1px solid rgba(0,0,0,0.1); background: var(--bg-main); font-weight: 600;">
+              <option value="all">All</option>
+              <option value="obtained">Obtained</option>
+              <option value="unobtained">Unobtained</option>
+            </select>
+          </div>
+          <div id="pokedex-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 1rem; justify-items: center; max-height: 65vh; overflow-y: auto; padding: 1rem; background: rgba(0,0,0,0.02); border-radius: 12px;">
+            <!-- Pokemon sprites will be injected here -->
+          </div>
+        </section>
+      </div>
+
+      <!-- View Panel: Settings -->
+      <div id="view-settings" class="view-panel">
+        <section class="glass-card" style="max-width: 600px; margin: 0 auto;">
+          <h2 class="section-title" style="margin-bottom: 1.5rem;">⚙️ Settings & Stats</h2>
+          
+          <!-- Rank Card -->
+          <div class="settings-card" id="settings-rank-card" style="cursor: pointer; margin-bottom: 1.5rem; background: rgba(255,255,255,0.03); border: 1px solid rgba(0,0,0,0.06); padding: 1.25rem; border-radius: 12px; transition: var(--transition);">
+            <span class="settings-card-label" style="font-size: 0.85rem; color: var(--text-muted); font-weight: 500;">👑 Current Rank</span>
+            <div class="settings-card-value" id="settings-rank-display" style="display: flex; align-items: center; gap: 0.5rem; font-size: 1.35rem; font-weight: 700; margin-top: 0.35rem;">
+              <span>Bronze</span>
+            </div>
+            <div style="font-size: 0.75rem; color: var(--primary); margin-top: 0.5rem; font-weight: 600;">Tap to view Rank Progression Details →</div>
+          </div>
+
+          <!-- Stats Counters -->
+          <div class="settings-stats-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
+            <div class="settings-card" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(0,0,0,0.06); padding: 1.25rem; border-radius: 12px;">
+              <span class="settings-card-label" style="font-size: 0.85rem; color: var(--text-muted); font-weight: 500;">✅ Completed Quests</span>
+              <div class="settings-card-value" id="settings-completed-quests-display" style="font-size: 1.6rem; font-weight: 700; margin-top: 0.25rem;">0</div>
+            </div>
+            <div class="settings-card" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(0,0,0,0.06); padding: 1.25rem; border-radius: 12px;">
+              <span class="settings-card-label" style="font-size: 0.85rem; color: var(--text-muted); font-weight: 500;">⏳ Pending Quests</span>
+              <div class="settings-card-value" id="settings-pending-quests-display" style="font-size: 1.6rem; font-weight: 700; margin-top: 0.25rem;">0</div>
+            </div>
+          </div>
+
+
+          <!-- Cloud Sync Card -->
+          <div class="settings-card" style="margin-bottom: 1.5rem; background: rgba(255,255,255,0.03); border: 1px solid rgba(0,0,0,0.06); padding: 1.25rem; border-radius: 12px;">
+            <span class="settings-card-label" style="font-size: 0.85rem; color: var(--text-muted); font-weight: 500;">☁️ Cloud Sync (Supabase)</span>
+            
+            <!-- Not Logged In View -->
+            <div id="sync-logged-out-container">
+              <div class="form-group" style="margin-top: 0.5rem; margin-bottom: 0.75rem;">
+                <label for="sync-db-url" style="font-size: 0.75rem;">Supabase Project URL</label>
+                <input type="text" id="sync-db-url" placeholder="https://your-project.supabase.co" style="padding: 0.5rem; font-size: 0.8rem;">
+              </div>
+              <div class="form-group" style="margin-bottom: 0.75rem;">
+                <label for="sync-db-key" style="font-size: 0.75rem;">Supabase Anon Public Key</label>
+                <input type="text" id="sync-db-key" placeholder="eyJhbGciOiJIUzI1NiIsIn..." style="padding: 0.5rem; font-size: 0.8rem;">
+              </div>
+              <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 0.75rem;">
+                <div class="form-group" style="margin-bottom: 0;">
+                  <label for="sync-email" style="font-size: 0.75rem;">Email</label>
+                  <input type="text" id="sync-email" placeholder="email@example.com" style="padding: 0.5rem; font-size: 0.8rem;">
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                  <label for="sync-password" style="font-size: 0.75rem;">Password</label>
+                  <input type="password" id="sync-password" placeholder="••••••••" style="padding: 0.5rem; font-size: 0.8rem; width: 100%; border: 1px solid #cbd5e1; border-radius: 8px; outline: none; background: #fff; color: #0f172a;">
+                </div>
+              </div>
+              <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+                <button type="button" id="sync-login-btn" class="btn-primary" style="flex: 1; margin: 0; padding: 0.6rem; font-size: 0.8rem; line-height: 1;">🔑 Log In</button>
+                <button type="button" id="sync-signup-btn" class="btn-action" style="flex: 1; padding: 0.6rem; font-size: 0.8rem; border-radius: 8px; line-height: 1;">📝 Sign Up</button>
+              </div>
+              <div id="sync-message" style="font-size: 0.75rem; color: #ff4757; margin-top: 0.5rem; font-weight: 600; text-align: center;"></div>
+            </div>
+
+            <!-- Logged In View -->
+            <div id="sync-logged-in-container" style="display: none; margin-top: 0.75rem;">
+              <div style="font-size: 0.9rem; font-weight: 600; color: var(--text-main); display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem;">
+                <span id="sync-user-email">email@example.com</span>
+                <span class="category-badge" style="background: rgba(46, 213, 115, 0.1); color: var(--success); border: 1px solid rgba(46, 213, 115, 0.3);">🟢 Synced</span>
+              </div>
+              <div id="sync-last-update" style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 1rem;">Last Sync: Just Now</div>
+              <button type="button" id="sync-logout-btn" class="btn-primary btn-delete" style="width: 100%; margin: 0; padding: 0.6rem; font-size: 0.8rem; background: linear-gradient(135deg, #ff4757, #ff6b81);">🚪 Log Out</button>
+            </div>
+          </div>
+
+          <!-- Reset Button -->
+          <div style="border-top: 1px solid rgba(0,0,0,0.06); padding-top: 1.5rem;">
+            <button id="reset-app-btn" class="btn-primary btn-delete" style="width: 100%; text-align: center; margin: 0; box-shadow: none; background: linear-gradient(135deg, #ff4757, #ff6b81);">⚠️ Reset Database</button>
+            <p style="font-size: 0.75rem; color: var(--text-muted); text-align: center; margin-top: 0.5rem; line-height: 1.4;">Warning: This will delete all quests, rituals, categories, and reset your level to 1.</p>
+          </div>
+        </section>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Rank Info Modal Overlay -->
+  <div id="rank-modal" class="levelup-overlay">
+    <div class="levelup-modal" style="text-align: center; max-width: 450px; padding: 2rem;">
+      <div class="levelup-icon" id="rank-modal-icon">🛡️</div>
+      <h2 class="levelup-title" id="rank-modal-title" style="border: none; padding-bottom: 0; margin-bottom: 0.5rem;">Rank Progression</h2>
+      <p class="levelup-text" id="rank-modal-text" style="font-size: 1rem; line-height: 1.5; margin-bottom: 1.5rem;">
+        You need <strong><span id="rank-modal-xp-needed">500</span> XP</strong> to advance from <span id="rank-modal-current">Bronze</span> to <span id="rank-modal-next">Silver</span>.
+      </p>
+      <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.25rem; margin-bottom: 1.5rem; text-align: left;">
+        <div style="font-size: 0.9rem; font-weight: 600; margin-bottom: 0.5rem; display: flex; justify-content: space-between; color: var(--text-main);">
+          <span>Rank Milestones</span>
+          <span id="rank-modal-levels-progress">Level 1 / 5</span>
+        </div>
+        <div class="xp-bar-bg" style="background: #e2e8f0; border: 1px solid #cbd5e1; height: 12px; overflow: hidden; border-radius: 6px;">
+          <div class="xp-bar-fill" id="rank-modal-bar-fill" style="width: 20%; background: linear-gradient(90deg, var(--primary), #818cf8); height: 100%;"></div>
+        </div>
+      </div>
+      <button class="btn-dismiss" id="rank-modal-close-btn" style="background: var(--primary); color: #fff; box-shadow: 0 4px 12px var(--primary-glow); width: 100%;">Close Details</button>
+    </div>
+  </div>
+  <!-- Pokemon Unlock Modal Overlay -->
+  <div id="pokemon-unlock-overlay" class="levelup-overlay">
+    <div class="levelup-modal" style="text-align: center; max-width: 450px; padding: 2rem;">
+      <div style="margin-bottom: 1rem; position: relative;">
+        <img id="pokemon-unlock-img" src="" alt="Pokemon" style="max-height: 150px; filter: drop-shadow(0 10px 15px rgba(0,0,0,0.3)); transform: scale(1.1); animation: bounce 2s infinite ease-in-out;">
+      </div>
+      <h2 class="levelup-title" style="border: none; padding-bottom: 0; margin-bottom: 0.5rem; color: #ff9f43;">New Pokemon Unlocked!</h2>
+      <p class="levelup-text" id="pokemon-unlock-name" style="font-size: 1.1rem; line-height: 1.5; margin-bottom: 1.5rem; font-weight: 600;">
+        Pokemon number X is obtained!!
+      </p>
+      <button class="btn-dismiss" id="pokemon-unlock-close-btn" style="background: linear-gradient(135deg, #ff9f43, #ff6b81); color: #fff; box-shadow: 0 4px 12px rgba(255, 107, 129, 0.3); width: 100%;">Awesome!</button>
+    </div>
+  </div>
+
+  <style>
+    @keyframes bounce {
+      0%, 100% { transform: translateY(0) scale(1.1); }
+      50% { transform: translateY(-10px) scale(1.15); }
+    }
+  </style>
+
+  <!-- Supabase client library -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- Load Game Client Application -->
+  <script src="sprites.js"></script>
+  <script src="berries.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
