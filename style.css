@@ -1209,6 +1209,28 @@ body.dark-theme .settings-card {
   color: var(--text-main);
 }
 
+.auth-input {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  border: 1px solid rgba(0,0,0,0.1);
+  background: var(--bg-main);
+  color: var(--text-main);
+  font-size: 0.9rem;
+  box-sizing: border-box;
+  transition: all 0.2s ease;
+}
+
+body.dark-theme .auth-input {
+  border: 1px solid rgba(255,255,255,0.1);
+}
+
+.auth-input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}
+
 .theme-toggle-wrapper {
   display: flex;
   background: transparent;

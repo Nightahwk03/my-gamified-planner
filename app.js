@@ -19,10 +19,9 @@ let state = {
   history: []
 };
 
-// Netlify Identity Sync Variables
-let lastSyncTimestamp = null;
-let netlifyUser = null;
+// Cloud Sync Variables
 let isCloudSynced = false;
+let lastSyncTimestamp = null;
 
 // UI Toggles & Form Elements
 const tabTaskBtn = document.getElementById('tab-task-btn');
@@ -152,7 +151,7 @@ function checkLoginStreak() {
 }
 
 // ==========================================
-// Netlify Identity Cloud Sync Functions
+// Supabase Cloud Sync Functions
 // ==========================================
 
 function resetToDefaultState() {
@@ -196,8 +195,102 @@ function updateSyncTimeLabel(timestamp) {
   }
 }
 
-function updateNetlifyUser(user) {
-  netlifyUser = user;
+// Supabase Variables
+let supabaseClient = null;
+let supabaseUser = null;
+
+function initSupabase() {
+  const savedUrl = localStorage.getItem('supabase_url');
+  const savedKey = localStorage.getItem('supabase_key');
+  
+  if (savedUrl && savedKey) {
+    document.getElementById('supabase-url').value = savedUrl;
+    document.getElementById('supabase-key').value = savedKey;
+    if (typeof supabase !== 'undefined') {
+      supabaseClient = supabase.createClient(savedUrl, savedKey);
+      
+      // Check session
+      supabaseClient.auth.getSession().then(({ data: { session } }) => {
+        updateSupabaseUser(session?.user || null);
+        if (session?.user) {
+          syncPullSupabase(true);
+        }
+      });
+
+      // Listen to auth state changes
+      supabaseClient.auth.onAuthStateChange((_event, session) => {
+        updateSupabaseUser(session?.user || null);
+      });
+    }
+  }
+
+  // Bind auth buttons click events
+  const loginBtn = document.getElementById('sync-login-btn');
+  const signupBtn = document.getElementById('sync-signup-btn');
+  const logoutBtn = document.getElementById('sync-logout-btn');
+
+  if (loginBtn) {
+    loginBtn.addEventListener('click', () => handleSupabaseAuth('login'));
+  }
+  if (signupBtn) {
+    signupBtn.addEventListener('click', () => handleSupabaseAuth('signup'));
+  }
+  if (logoutBtn) {
+    logoutBtn.addEventListener('click', async () => {
+      if (supabaseClient) {
+        await supabaseClient.auth.signOut();
+        updateSupabaseUser(null);
+        isCloudSynced = false;
+        resetToDefaultState();
+        render();
+      }
+    });
+  }
+}
+
+async function handleSupabaseAuth(action) {
+  const url = document.getElementById('supabase-url').value.trim();
+  const key = document.getElementById('supabase-key').value.trim();
+  const email = document.getElementById('supabase-email').value.trim();
+  const password = document.getElementById('supabase-password').value.trim();
+  const errorMsg = document.getElementById('sync-error-msg');
+  
+  if (!url || !key || !email || !password) {
+    errorMsg.textContent = 'All fields are required.';
+    errorMsg.style.display = 'block';
+    return;
+  }
+  
+  errorMsg.style.display = 'none';
+
+  if (!supabaseClient) {
+    supabaseClient = supabase.createClient(url, key);
+    localStorage.setItem('supabase_url', url);
+    localStorage.setItem('supabase_key', key);
+  }
+
+  try {
+    let result;
+    if (action === 'signup') {
+      result = await supabaseClient.auth.signUp({ email, password });
+    } else {
+      result = await supabaseClient.auth.signInWithPassword({ email, password });
+    }
+
+    if (result.error) throw result.error;
+    
+    // Auth successful
+    document.getElementById('supabase-password').value = '';
+    syncPullSupabase(true);
+    
+  } catch (err) {
+    errorMsg.textContent = err.message;
+    errorMsg.style.display = 'block';
+  }
+}
+
+function updateSupabaseUser(user) {
+  supabaseUser = user;
   const loggedOutState = document.getElementById('sync-logged-out-state');
   const loggedInState = document.getElementById('sync-logged-in-state');
   const emailDisplay = document.getElementById('sync-email-display');
@@ -215,131 +308,68 @@ function updateNetlifyUser(user) {
   }
 }
 
-function initNetlifyIdentity() {
-  if (typeof window.netlifyIdentity === 'undefined') {
-    console.warn('[Gamification] Netlify Identity Widget script is not loaded.');
-    return;
-  }
-
-  // Initialize Netlify Identity
-  netlifyIdentity.init();
-
-  // Attach event handlers
-  netlifyIdentity.on('init', user => {
-    updateNetlifyUser(user);
-    if (user) {
-      syncPullNetlify();
-    }
-  });
-
-  netlifyIdentity.on('login', user => {
-    updateNetlifyUser(user);
-    netlifyIdentity.close();
-    syncPullNetlify(true);
-  });
-
-  netlifyIdentity.on('logout', () => {
-    updateNetlifyUser(null);
-    isCloudSynced = false;
-    resetToDefaultState();
-    render();
-  });
-
-  netlifyIdentity.on('error', err => {
-    console.error('[Gamification] Netlify Identity Error:', err);
-  });
-
-  // Bind auth buttons click events
-  const authBtn = document.getElementById('sync-auth-btn');
-  const logoutBtn = document.getElementById('sync-logout-btn');
-
-  if (authBtn) {
-    authBtn.addEventListener('click', () => {
-      netlifyIdentity.open();
-    });
-  }
-
-  if (logoutBtn) {
-    logoutBtn.addEventListener('click', () => {
-      netlifyIdentity.logout();
-    });
-  }
-}
-
-async function syncPushNetlify() {
-  if (!netlifyUser || typeof window.netlifyIdentity === 'undefined') return;
+async function syncPushSupabase() {
+  if (!supabaseClient || !supabaseUser) return;
   if (!isCloudSynced) {
     console.log('[Gamification] Postponed push: Cloud state has not been pulled yet.');
     return;
   }
   try {
-    const token = await netlifyIdentity.currentUser().jwt();
-    const res = await fetch('/.netlify/functions/sync', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify({
-        state: state,
-        updated_at: new Date().toISOString()
-      })
-    });
-    if (res.ok) {
-      const result = await res.json();
-      lastSyncTimestamp = result.updated_at;
-      updateSyncTimeLabel(lastSyncTimestamp);
-      console.log('[Gamification] Successfully pushed data to Netlify Blobs.');
-    } else {
-      const errText = await res.text();
-      console.error('[Gamification] Netlify push failed:', res.status, errText);
-      alert('Cloud Sync Push Failed: ' + res.status + ' ' + errText);
-    }
+    const timestamp = new Date().toISOString();
+    const { error } = await supabaseClient
+      .from('user_progress')
+      .upsert({ 
+        id: supabaseUser.id, 
+        data: state, 
+        updated_at: timestamp 
+      });
+      
+    if (error) throw error;
+    
+    lastSyncTimestamp = timestamp;
+    updateSyncTimeLabel(lastSyncTimestamp);
+    console.log('[Gamification] Successfully pushed data to Supabase.');
   } catch (err) {
-    console.error('[Gamification] Error in syncPushNetlify:', err);
-    alert('Cloud Sync Push Error: ' + err.message);
+    console.error('[Gamification] Supabase push failed:', err);
+    alert('Cloud Sync Push Failed: ' + err.message);
   }
 }
 
-async function syncPullNetlify(forceRender = false) {
-  if (!netlifyUser || typeof window.netlifyIdentity === 'undefined') return;
+async function syncPullSupabase(forceRender = false) {
+  if (!supabaseClient || !supabaseUser) return;
   try {
-    const token = await netlifyIdentity.currentUser().jwt();
-    const res = await fetch('/.netlify/functions/sync', {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${token}`
+    const { data, error } = await supabaseClient
+      .from('user_progress')
+      .select('data, updated_at')
+      .eq('id', supabaseUser.id)
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') {
+        // No rows returned - blob is empty
+        console.log('[Gamification] Supabase is empty. Pushing current state.');
+        isCloudSynced = true; 
+        await syncPushSupabase();
+      } else {
+        throw error;
       }
-    });
-    if (res.ok) {
-      const result = await res.json();
-      if (result.empty) {
-        console.log('[Gamification] Netlify Blob is empty. Pushing current state.');
-        isCloudSynced = true; // Mark as synced so the push is allowed
-        await syncPushNetlify();
-      } else if (result.state && result.updated_at) {
-        const cloudTime = new Date(result.updated_at).getTime();
-        const lastLocalTime = lastSyncTimestamp ? new Date(lastSyncTimestamp).getTime() : 0;
-        
-        isCloudSynced = true; // Mark as synced once we successfully download/read the state
-        
-        // Overwrite if cloud state is newer, or if we force rendering (e.g. after login)
-        if (cloudTime > lastLocalTime || forceRender) {
-          console.log('[Gamification] Cloud state is newer. Syncing with local state.');
-          state = result.state;
-          lastSyncTimestamp = result.updated_at;
-          localStorage.setItem('gamified_todo_state', JSON.stringify(state));
-          updateSyncTimeLabel(lastSyncTimestamp);
-          render();
-        }
+    } else if (data) {
+      const cloudTime = new Date(data.updated_at).getTime();
+      const lastLocalTime = lastSyncTimestamp ? new Date(lastSyncTimestamp).getTime() : 0;
+      
+      isCloudSynced = true; 
+      
+      if (cloudTime > lastLocalTime || forceRender) {
+        console.log('[Gamification] Cloud state is newer. Syncing with local state.');
+        state = data.data;
+        lastSyncTimestamp = data.updated_at;
+        localStorage.setItem('gamified_todo_state', JSON.stringify(state));
+        updateSyncTimeLabel(lastSyncTimestamp);
+        render();
       }
-    } else {
-      const errText = await res.text();
-      console.error('[Gamification] Netlify pull failed:', res.status, errText);
-      alert('Cloud Sync Pull Failed: ' + res.status + ' ' + errText);
     }
   } catch (err) {
-    console.error('[Gamification] Error in syncPullNetlify:', err);
+    console.error('[Gamification] Supabase pull failed:', err);
     alert('Cloud Sync Pull Error: ' + err.message);
   }
 }
@@ -348,8 +378,8 @@ async function syncPullNetlify(forceRender = false) {
 async function loadData() {
   loadFromLocalStorage();
   
-  // Initialize Netlify Identity Widget and login status
-  initNetlifyIdentity();
+  // Initialize Supabase Widget and login status
+  initSupabase();
 
   // Removed local Node server communication to ensure Netlify Blobs is the only cloud truth
   
@@ -421,12 +451,12 @@ async function saveData() {
   // Render UI immediately
   render();
 
-  // Push to Netlify Blobs if logged in
-  if (netlifyUser) {
-    await syncPushNetlify();
+  // Push to Supabase if logged in
+  if (supabaseUser) {
+    await syncPushSupabase();
   }
-
-  // Netlify push is handled above. Removed local node server push.
+  
+  // Cloud push is handled above. Removed local node server push.
 }
 
 // Calculate title based on Level
@@ -1986,8 +2016,8 @@ window.onload = () => {
 
   // Periodic check/sync every 30 seconds
   setInterval(() => {
-    if (netlifyUser) {
-      syncPullNetlify();
+    if (supabaseUser) {
+      syncPullSupabase();
     }
   }, 30000);
 };

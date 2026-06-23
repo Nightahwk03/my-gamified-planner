@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#1a1a2e">
   <title>Level Up Life - Gamified Planner</title>
   <link rel="stylesheet" href="style.css">
-  <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
@@ -450,14 +450,22 @@
 
 
 
-          <!-- Cloud Sync (Netlify) Card -->
+          <!-- Cloud Sync (Supabase) Card -->
           <div class="settings-card" id="settings-sync-card" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(0,0,0,0.06); padding: 1.25rem; border-radius: 12px; margin-bottom: 1.5rem;">
-            <span class="settings-card-label" style="font-size: 0.85rem; color: var(--text-muted); font-weight: 500;">☁️ Cloud Sync (Netlify)</span>
+            <span class="settings-card-label" style="font-size: 0.85rem; color: var(--text-muted); font-weight: 500;">☁️ Cloud Sync (Supabase)</span>
             <div id="sync-status-container" style="margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.5rem;">
               <!-- When logged out -->
-              <div id="sync-logged-out-state" style="display: flex; flex-direction: column; gap: 0.5rem;">
-                <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0;">Log in or sign up to cross-sync your progress across devices via email and password.</p>
-                <button id="sync-auth-btn" class="btn-primary" style="margin: 0; padding: 0.6rem; font-size: 0.85rem;">🔑 Log In / Sign Up</button>
+              <div id="sync-logged-out-state" style="display: flex; flex-direction: column; gap: 0.75rem;">
+                <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0;">Log in or sign up to cross-sync your progress across devices.</p>
+                <input type="text" id="supabase-url" placeholder="Supabase Project URL" class="auth-input" />
+                <input type="password" id="supabase-key" placeholder="Supabase Anon Key" class="auth-input" />
+                <input type="email" id="supabase-email" placeholder="Email address" class="auth-input" />
+                <input type="password" id="supabase-password" placeholder="Password" class="auth-input" />
+                <div style="display: flex; gap: 0.5rem;">
+                  <button id="sync-login-btn" class="btn-primary" style="flex: 1; margin: 0; padding: 0.6rem; font-size: 0.85rem;">🔑 Log In</button>
+                  <button id="sync-signup-btn" class="btn-secondary" style="flex: 1; margin: 0; padding: 0.6rem; font-size: 0.85rem; background: var(--bg-alt); color: var(--text-main); border: 1px solid rgba(0,0,0,0.1);">📝 Sign Up</button>
+                </div>
+                <p id="sync-error-msg" style="font-size: 0.75rem; color: #ff4757; margin: 0; display: none;"></p>
               </div>
               <!-- When logged in -->
               <div id="sync-logged-in-state" style="display: none; flex-direction: column; gap: 0.5rem;">
