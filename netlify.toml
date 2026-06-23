@@ -1,0 +1,7 @@
+[build]
+  command = "echo \"Building to enable Netlify Blobs context...\""
+  publish = "."
+
+[functions]
+  directory = "netlify/functions"
+
