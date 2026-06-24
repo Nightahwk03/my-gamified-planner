@@ -78,6 +78,15 @@ body.dark-theme textarea {
   border-color: #334155 !important;
 }
 
+body.dark-theme input:-webkit-autofill,
+body.dark-theme input:-webkit-autofill:hover, 
+body.dark-theme input:-webkit-autofill:focus, 
+body.dark-theme input:-webkit-autofill:active{
+  -webkit-box-shadow: 0 0 0 30px #1e293b inset !important;
+  -webkit-text-fill-color: #f8fafc !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
 body.dark-theme .btn-rank {
   background: #1e293b;
   border-color: #334155;
