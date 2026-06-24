@@ -133,21 +133,50 @@ function checkLoginStreak() {
     if (state.user.lastLoginDate === yesterdayStr) {
       state.user.loginStreak += 1;
       state.user.lastLoginDate = todayStr;
-      if (state.user.petHunger !== undefined) {
-        state.user.petHunger = Math.max(0, state.user.petHunger - 25);
-      }
       changed = true;
     } else if (state.user.lastLoginDate !== todayStr) {
       // Streak broken if last login is older than yesterday
       state.user.loginStreak = 1;
       state.user.lastLoginDate = todayStr;
-      if (state.user.petHunger !== undefined) {
-        state.user.petHunger = 0;
-      }
       changed = true;
     }
   }
   return changed;
+}
+
+// 8-Hour Hunger Decay Logic
+function checkHungerDecay() {
+  if (!state.user.lastHungerDecay) {
+    state.user.lastHungerDecay = Date.now();
+    return false;
+  }
+  
+  const now = Date.now();
+  const eightHoursInMs = 8 * 60 * 60 * 1000;
+  const timeDiff = now - state.user.lastHungerDecay;
+  
+  if (timeDiff >= eightHoursInMs) {
+    const intervals = Math.floor(timeDiff / eightHoursInMs);
+    let totalReduction = 0;
+    
+    for (let i = 0; i < intervals; i++) {
+      // Random reduction between 10 and 20 per 8 hours
+      totalReduction += Math.floor(Math.random() * 11) + 10;
+    }
+    
+    // Never reduce more than 70 at once
+    if (totalReduction > 70) totalReduction = 70;
+    
+    if (state.user.petHunger !== undefined) {
+      state.user.petHunger = Math.max(0, state.user.petHunger - totalReduction);
+    }
+    
+    // Move the timestamp forward by the exact intervals passed
+    state.user.lastHungerDecay += intervals * eightHoursInMs;
+    return true;
+  }
+  
+  return false;
 }
 
 // ==========================================
@@ -412,14 +441,16 @@ async function loadData() {
     delete state.user.stats;
   }
   
-  // Update login streak and run background checks immediately on startup
+  // Update login streak, hunger decay, and run background checks immediately on startup
   const streakChanged = checkLoginStreak();
-  if (streakChanged) {
+  const hungerChanged = checkHungerDecay();
+  
+  if (streakChanged || hungerChanged) {
     await saveData();
   }
   await performTickChecks();
   initSidebarAndRouting();
-  if (!streakChanged) {
+  if (!streakChanged && !hungerChanged) {
     render();
   }
 }
@@ -561,6 +592,7 @@ function render() {
   renderTasksBoard();
   renderQuestLog();
   renderSettings();
+  applyTheme();
 }
 
 function renderPokemonDropProgress() {
@@ -1839,8 +1871,7 @@ function renderSettings() {
   if (pendingDisplay) {
     pendingDisplay.innerText = pendingCount;
   }
-  // Always ensure dark theme class is removed
-  document.body.classList.remove('dark-theme');
+  // Removed hardcoded dark theme removal
 }
 
 
@@ -2428,8 +2459,46 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Feed pet delegation removed
+  // Password Visibility Toggle
+  const togglePasswordBtn = document.getElementById('toggle-password-btn');
+  const passwordInput = document.getElementById('supabase-password');
+  if (togglePasswordBtn && passwordInput) {
+    togglePasswordBtn.addEventListener('click', () => {
+      if (passwordInput.type === 'password') {
+        passwordInput.type = 'text';
+        togglePasswordBtn.innerText = '🙈';
+      } else {
+        passwordInput.type = 'password';
+        togglePasswordBtn.innerText = '👁️';
+      }
+    });
+  }
+
+  // Theme Toggle
+  const themeToggleBtn = document.getElementById('theme-toggle-btn');
+  if (themeToggleBtn) {
+    themeToggleBtn.addEventListener('click', async () => {
+      state.theme = state.theme === 'dark' ? 'light' : 'dark';
+      applyTheme();
+      await saveData();
+    });
+  }
 });
+
+function applyTheme() {
+  const themeIcon = document.getElementById('theme-icon');
+  const themeLabel = document.getElementById('theme-label');
+  
+  if (state.theme === 'dark') {
+    document.body.classList.add('dark-theme');
+    if (themeIcon) themeIcon.innerText = '☀️';
+    if (themeLabel) themeLabel.innerText = 'Light Mode';
+  } else {
+    document.body.classList.remove('dark-theme');
+    if (themeIcon) themeIcon.innerText = '🌙';
+    if (themeLabel) themeLabel.innerText = 'Dark Mode';
+  }
+}
 
 // Register Service Worker for PWA
 if ('serviceWorker' in navigator) {

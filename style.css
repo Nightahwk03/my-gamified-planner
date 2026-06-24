@@ -35,6 +35,47 @@
   --border-radius: 16px;
 }
 
+body.dark-theme {
+  --bg-color: #0f172a;
+  --bg-gradient: radial-gradient(circle at 50% 50%, #1e293b 0%, #0f172a 100%);
+  --panel-bg: rgba(30, 41, 59, 0.75);
+  --panel-border: rgba(51, 65, 85, 0.5);
+  --panel-glow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5);
+  
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  
+  --primary: #818cf8;
+  --primary-glow: rgba(129, 140, 248, 0.2);
+}
+
+body.dark-theme .task-card,
+body.dark-theme .habit-card {
+  background: rgba(30, 41, 59, 0.6);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+body.dark-theme .task-card:hover,
+body.dark-theme .habit-card:hover {
+  background: rgba(30, 41, 59, 0.9);
+}
+
+body.dark-theme select,
+body.dark-theme .filter-select {
+  background: #1e293b !important;
+  color: #f8fafc !important;
+  border-color: #334155 !important;
+}
+
+body.dark-theme .auth-input,
+body.dark-theme input[type="text"],
+body.dark-theme input[type="password"],
+body.dark-theme input[type="email"] {
+  background: rgba(30, 41, 59, 0.6) !important;
+  color: #f8fafc !important;
+  border-color: #334155 !important;
+}
+
 * {
   margin: 0;
   padding: 0;
