@@ -2345,10 +2345,10 @@ function renderShop() {
   const rarities = ['Common', 'Rare', 'Mythical'];
   
   rarities.forEach(rarity => {
-    // Filter and sort by cost ascending
+    // Filter and sort by hungerRestored ascending
     const tierBerries = pokemonBerries
       .filter(b => b.rarity === rarity)
-      .sort((a, b) => a.cost - b.cost);
+      .sort((a, b) => a.hungerRestored - b.hungerRestored);
       
     if (tierBerries.length === 0) return;
     
