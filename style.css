@@ -70,7 +70,9 @@ body.dark-theme .filter-select {
 body.dark-theme .auth-input,
 body.dark-theme input[type="text"],
 body.dark-theme input[type="password"],
-body.dark-theme input[type="email"] {
+body.dark-theme input[type="email"],
+body.dark-theme input[type="datetime-local"],
+body.dark-theme textarea {
   background: rgba(30, 41, 59, 0.6) !important;
   color: #f8fafc !important;
   border-color: #334155 !important;
