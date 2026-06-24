@@ -166,12 +166,12 @@
 
       <!-- View Panel: Dashboard -->
       <div id="view-dashboard" class="view-panel active">
-        <div class="dashboard-grid">
+        <div class="dashboard-vertical-layout" style="display: flex; flex-direction: column; gap: 1.5rem; height: 100%;">
           
-          <!-- Left Column: Profile, stats, etc. -->
-          <div class="dashboard-sidebar">
-            <!-- Profile & Level Info Card -->
-            <section class="glass-card profile-card" id="profile-card">
+          <!-- Top Row: Profile & Pet -->
+          <div class="dashboard-top-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem;">
+            <!-- Left: Profile & Level Info Card -->
+            <section class="glass-card profile-card" id="profile-card" style="margin: 0; height: 100%;">
               <button id="rank-info-btn" class="btn-rank">👑 Rank</button>
               <div class="avatar-wrapper">
                 <div class="avatar">🧙‍♂️</div>
@@ -190,102 +190,98 @@
                   <div class="xp-bar-fill" id="xp-bar-fill"></div>
                 </div>
               </div>
+            </section>
 
-              <!-- My Pet Card -->
-              <div class="pet-card" style="margin-top: 1.5rem; background: rgba(255,255,255,0.03); border: 1px solid rgba(0,0,0,0.05); border-radius: 12px; padding: 1.5rem; text-align: center;">
-                <h3 style="font-size: 1.1rem; margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between;">
-                  <span>🐾 My Pet</span>
-                  <span style="font-size: 0.9rem; color: #f1c40f; font-weight: bold;" id="coin-balance-display">0 🪙</span>
+            <!-- Right: My Pet Card -->
+            <section class="glass-card pet-card" style="margin: 0; height: 100%; text-align: center; display: flex; flex-direction: column;">
+              <h3 style="font-size: 1.1rem; margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between;">
+                <span>🐾 My Pet</span>
+                <span style="font-size: 0.9rem; color: #f1c40f; font-weight: bold;" id="coin-balance-display">0 🪙</span>
+              </h3>
+              
+              <div id="pet-display-area" style="flex: 1; min-height: 120px; display: flex; align-items: center; justify-content: center; margin-bottom: 1rem;">
+                <span style="color: var(--text-muted); font-size: 0.9rem;">Select a Pet from the Pokedex!</span>
+              </div>
+              
+              <div id="pet-controls" style="display: none;">
+                <div style="text-align: left; margin-bottom: 0.5rem; font-size: 0.85rem; font-weight: 600; color: var(--text-main);">
+                  Hunger Level: <span id="pet-hunger-text">100%</span>
+                </div>
+                <div class="xp-bar-bg" style="height: 10px; margin-bottom: 1rem; border-radius: 5px;">
+                  <div class="xp-bar-fill" id="pet-hunger-bar" style="width: 100%; background: linear-gradient(90deg, #ff7675, #d63031);"></div>
+                </div>
+                
+                <div style="font-size: 0.85rem; font-weight: 600; color: var(--text-main); margin-bottom: 0.5rem; text-align: left;">
+                  My Berries:
+                </div>
+                <div id="inventory-grid" style="display: flex; gap: 0.5rem; overflow-x: auto; padding-bottom: 0.5rem;">
+                  <span style="font-size: 0.8rem; color: var(--text-muted);">No berries in inventory. Buy some from the shop!</span>
+                </div>
+              </div>
+            </section>
+          </div>
+
+          <!-- Middle Row: Habits -->
+          <section id="habits-section" class="glass-card" style="display: flex; flex-direction: column; max-height: 40vh; margin: 0;">
+            <h2 class="section-title" style="flex-shrink: 0;">🔁 Today's Habits</h2>
+            <div class="habits-container scrollable-container" id="habits-container" style="overflow-y: auto; flex: 1; padding-right: 0.5rem;">
+              <!-- Dynamic habits checklists populated here -->
+            </div>
+          </section>
+
+          <!-- Bottom Row: Active Quests -->
+          <section id="tasks-section" class="glass-card" style="display: flex; flex-direction: column; flex: 1; min-height: 40vh; margin: 0;">
+            <div class="board-header" style="flex-shrink: 0;">
+              <h2 class="section-title" style="margin-bottom: 0; border: none; padding: 0;">⚔️ Active Quests</h2>
+              
+              <div class="filters-wrapper">
+                <!-- Sort Tasks -->
+                <select id="sort-tasks" class="filter-select">
+                  <option value="deadline-asc">📅 Sort: Deadline (Soonest)</option>
+                  <option value="deadline-desc">📅 Sort: Deadline (Latest)</option>
+                  <option value="priority-desc">🛡️ Sort: Priority (High → Low)</option>
+                  <option value="priority-asc">🛡️ Sort: Priority (Low → High)</option>
+                  <option value="created-desc">⏳ Sort: Created (Newest)</option>
+                  <option value="created-asc">⏳ Sort: Created (Oldest)</option>
+                </select>
+                <!-- Filter by Category -->
+                <select id="filter-category" class="filter-select">
+                  <option value="all">🏷️ All Categories</option>
+                </select>
+                <!-- Filter by Priority -->
+                <select id="filter-priority" class="filter-select">
+                  <option value="all">🛡️ All Priorities</option>
+                  <option value="high">High Only</option>
+                  <option value="medium">Medium Only</option>
+                  <option value="low">Low Only</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="board-columns scrollable-container" style="overflow-y: auto; flex: 1; padding-right: 0.5rem; margin-top: 1rem; align-items: flex-start;">
+              <!-- Active Column -->
+              <div class="board-column">
+                <h3 class="column-title">
+                  <span>In Progress</span>
+                  <span class="column-count" id="active-tasks-count">0</span>
                 </h3>
-                
-                <div id="pet-display-area" style="min-height: 120px; display: flex; align-items: center; justify-content: center; margin-bottom: 1rem;">
-                  <span style="color: var(--text-muted); font-size: 0.9rem;">Select a Pet from the Pokedex!</span>
-                </div>
-                
-                <div id="pet-controls" style="display: none;">
-                  <div style="text-align: left; margin-bottom: 0.5rem; font-size: 0.85rem; font-weight: 600; color: var(--text-main);">
-                    Hunger Level: <span id="pet-hunger-text">100%</span>
-                  </div>
-                  <div class="xp-bar-bg" style="height: 10px; margin-bottom: 1rem; border-radius: 5px;">
-                    <div class="xp-bar-fill" id="pet-hunger-bar" style="width: 100%; background: linear-gradient(90deg, #ff7675, #d63031);"></div>
-                  </div>
-                  
-                  <div style="font-size: 0.85rem; font-weight: 600; color: var(--text-main); margin-bottom: 0.5rem; text-align: left;">
-                    My Berries:
-                  </div>
-                  <div id="inventory-grid" style="display: flex; gap: 0.5rem; overflow-x: auto; padding-bottom: 0.5rem;">
-                    <span style="font-size: 0.8rem; color: var(--text-muted);">No berries in inventory. Buy some from the shop!</span>
-                  </div>
-                </div>
-              </div>
-            </section>
-          </div>
-
-          <!-- Right Column: Today's Tasks & Habits checklist -->
-          <div class="dashboard-main">
-            <!-- Daily Habits Tracker Grid -->
-            <section id="habits-section" class="glass-card">
-              <h2 class="section-title">🔁 Today's Habits</h2>
-              <div class="habits-container" id="habits-container">
-                <!-- Dynamic habits checklists populated here -->
-              </div>
-            </section>
-
-            <!-- Task Kanban / Board Section -->
-            <section id="tasks-section" class="glass-card">
-              <div class="board-header">
-                <h2 class="section-title" style="margin-bottom: 0; border: none; padding: 0;">⚔️ Active Quests</h2>
-                
-                <div class="filters-wrapper">
-                  <!-- Sort Tasks -->
-                  <select id="sort-tasks" class="filter-select">
-                    <option value="deadline-asc">📅 Sort: Deadline (Soonest)</option>
-                    <option value="deadline-desc">📅 Sort: Deadline (Latest)</option>
-                    <option value="priority-desc">🛡️ Sort: Priority (High → Low)</option>
-                    <option value="priority-asc">🛡️ Sort: Priority (Low → High)</option>
-                    <option value="created-desc">⏳ Sort: Created (Newest)</option>
-                    <option value="created-asc">⏳ Sort: Created (Oldest)</option>
-                  </select>
-                  <!-- Filter by Category -->
-                  <select id="filter-category" class="filter-select">
-                    <option value="all">🏷️ All Categories</option>
-                  </select>
-                  <!-- Filter by Priority -->
-                  <select id="filter-priority" class="filter-select">
-                    <option value="all">🛡️ All Priorities</option>
-                    <option value="high">High Only</option>
-                    <option value="medium">Medium Only</option>
-                    <option value="low">Low Only</option>
-                  </select>
+                <div class="board-column" id="active-tasks-list">
+                  <!-- Active tasks populated here -->
                 </div>
               </div>
 
-              <div class="board-columns">
-                <!-- Active Column -->
-                <div class="board-column">
-                  <h3 class="column-title">
-                    <span>In Progress</span>
-                    <span class="column-count" id="active-tasks-count">0</span>
-                  </h3>
-                  <div class="board-column" id="active-tasks-list">
-                    <!-- Active tasks populated here -->
-                  </div>
-                </div>
-
-                <!-- Completed Column -->
-                <div class="board-column">
-                  <h3 class="column-title">
-                    <span>Completed</span>
-                    <span class="column-count" id="completed-tasks-count">0</span>
-                  </h3>
-                  <div class="board-column" id="completed-tasks-list">
-                    <!-- Completed tasks populated here -->
-                  </div>
+              <!-- Completed Column -->
+              <div class="board-column">
+                <h3 class="column-title">
+                  <span>Completed</span>
+                  <span class="column-count" id="completed-tasks-count">0</span>
+                </h3>
+                <div class="board-column" id="completed-tasks-list">
+                  <!-- Completed tasks populated here -->
                 </div>
               </div>
-            </section>
-          </div>
-
+            </div>
+          </section>
         </div>
       </div>
 
