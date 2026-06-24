@@ -552,6 +552,7 @@ function updateAvatar(tier) {
 function render() {
   renderProfile();
   renderPet();
+  renderPokemonDropProgress();
   renderShop();
   renderBag();
   renderCategorySelectors();
@@ -560,6 +561,19 @@ function render() {
   renderTasksBoard();
   renderQuestLog();
   renderSettings();
+}
+
+function renderPokemonDropProgress() {
+  const dropText = document.getElementById('pokemon-drop-text');
+  const dropBar = document.getElementById('pokemon-drop-bar');
+  if (dropText && dropBar) {
+    const current = state.user.tasksCompletedForDrop || 0;
+    const required = state.user.nextDropRequirement || 10;
+    
+    dropText.innerText = `${current} / ${required} Tasks Completed`;
+    const percent = Math.min(100, (current / required) * 100);
+    dropBar.style.width = `${percent}%`;
+  }
 }
 
 // Render Profile Panel
