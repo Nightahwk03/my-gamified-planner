@@ -169,6 +169,11 @@ function checkHungerDecay() {
     
     if (state.user.petHunger !== undefined) {
       state.user.petHunger = Math.max(0, state.user.petHunger - totalReduction);
+      if (state.user.petHunger === 0 && state.user.activePet) {
+        logActivity(`Your pet ran away due to starvation!`);
+        state.user.obtainedPokemon = state.user.obtainedPokemon.filter(p => p !== state.user.activePet);
+        state.user.activePet = null;
+      }
     }
     
     // Move the timestamp forward by the exact intervals passed
@@ -1222,9 +1227,13 @@ async function completeTask(id) {
   }
 
   // Adjust User XP and Coins
-  const coinsEarned = Math.round(10 * multiplier);
+  const tier = getTier(state.user.level);
+  const tierMult = getTierModifiers(tier).gain;
+  const coinsEarned = parseFloat((1.5 * multiplier * tierMult).toFixed(1));
+  
   if (state.user.coins === undefined) state.user.coins = 0;
   state.user.coins += coinsEarned;
+  state.user.coins = parseFloat(state.user.coins.toFixed(1));
 
   adjustXP(xpEarned, `Completed Quest: "${task.title}" (Earned ${coinsEarned}🪙)`);
   
@@ -1294,9 +1303,13 @@ async function checkInHabit(id) {
   const xpEarned = Math.round(30 * streakMult);
 
   // Award Coins based on streak
-  const coinsEarned = Math.round(10 * streakMult);
+  const tier = getTier(state.user.level);
+  const tierMult = getTierModifiers(tier).gain;
+  const coinsEarned = parseFloat((1.0 * streakMult * tierMult).toFixed(1));
+  
   if (state.user.coins === undefined) state.user.coins = 0;
   state.user.coins += coinsEarned;
+  state.user.coins = parseFloat(state.user.coins.toFixed(1));
 
   adjustXP(xpEarned, `Performed Habit: "${habit.title}" (Earned ${coinsEarned}🪙, Streak 🔥 ${habit.streak})`);
   
@@ -1434,10 +1447,17 @@ async function performTickChecks() {
       const deadline = new Date(task.deadline);
       if (deadline < now) {
         task.penalized = true;
-        const multiplier = getPriorityMultiplier(task.priority);
-        const penalty = Math.round(-50 * multiplier);
         
-        adjustXP(penalty, `Missed Deadline Penalty: "${task.title}"`);
+        let penalty = 0;
+        if (task.priority === 'high') {
+          penalty = -50;
+        } else if (task.priority === 'medium') {
+          penalty = -30;
+        }
+        
+        if (penalty !== 0) {
+          adjustXP(penalty, `Missed Deadline Penalty: "${task.title}"`);
+        }
         changed = true;
       }
     }
@@ -1453,7 +1473,7 @@ async function performTickChecks() {
       if (notCompletedOnTime && notPenalizedYet) {
         if (habit.streak > 0 || habit.lastCompletedDate !== null) {
           habit.streak = 0;
-          adjustXP(-20, `Missed Habit Penalty: "${habit.title}"`);
+          adjustXP(-30, `Missed Habit Penalty: "${habit.title}"`);
           habit.lastPenalizedDate = lastScheduledDateStr;
           changed = true;
         }
