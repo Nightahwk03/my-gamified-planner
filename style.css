@@ -76,6 +76,12 @@ body.dark-theme input[type="email"] {
   border-color: #334155 !important;
 }
 
+body.dark-theme .btn-rank {
+  background: #1e293b;
+  border-color: #334155;
+  color: #f8fafc;
+}
+
 * {
   margin: 0;
   padding: 0;
