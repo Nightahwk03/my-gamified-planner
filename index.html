@@ -155,9 +155,15 @@
     <span class="nav-icon">⚙️</span>
     <span class="nav-label">Settings</span>
   </button>
-  <button class="nav-item" id="theme-toggle-btn" style="margin-top: 1rem; border-top: 1px solid rgba(0,0,0,0.1); padding-top: 1rem; border-radius: 0;">
+  <div style="margin-top: auto;"></div>
+  <div style="height: 1px; background: rgba(150, 150, 150, 0.2); margin: 0.5rem 0; width: 100%;"></div>
+  <button class="nav-item" id="theme-toggle-btn">
     <span class="nav-icon" id="theme-icon">🌙</span>
     <span class="nav-label" id="theme-label">Dark Mode</span>
+  </button>
+  <button class="nav-item" data-view="login">
+    <span class="nav-icon">👤</span>
+    <span class="nav-label">Login / Account</span>
   </button>
 </nav>
     </aside>
@@ -465,34 +471,6 @@
 
 
 
-          <!-- Cloud Sync (Supabase) Card -->
-          <div class="settings-card" id="settings-sync-card" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(0,0,0,0.06); padding: 1.25rem; border-radius: 12px; margin-bottom: 1.5rem;">
-            <span class="settings-card-label" style="font-size: 0.85rem; color: var(--text-muted); font-weight: 500;">☁️ Cloud Sync (Supabase)</span>
-            <div id="sync-status-container" style="margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.5rem;">
-              <!-- When logged out -->
-              <div id="sync-logged-out-state" style="display: flex; flex-direction: column; gap: 0.75rem;">
-                <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0;">Log in or sign up to cross-sync your progress across devices.</p>
-                <input type="email" id="supabase-email" placeholder="Email address" class="auth-input" />
-                <div style="position: relative; width: 100%;">
-                  <input type="password" id="supabase-password" placeholder="Password" class="auth-input" style="width: 100%; padding-right: 40px; box-sizing: border-box;" />
-                  <button type="button" id="toggle-password-btn" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; font-size: 1.2rem; color: var(--text-muted); padding: 0;">👁️</button>
-                </div>
-                <div style="display: flex; gap: 0.5rem;">
-                  <button id="sync-login-btn" class="btn-primary" style="flex: 1; margin: 0; padding: 0.6rem; font-size: 0.85rem;">🔑 Log In</button>
-                  <button id="sync-signup-btn" class="btn-secondary" style="flex: 1; margin: 0; padding: 0.6rem; font-size: 0.85rem; background: var(--bg-alt); color: var(--text-main); border: 1px solid rgba(0,0,0,0.1);">📝 Sign Up</button>
-                </div>
-                <p id="sync-error-msg" style="font-size: 0.75rem; color: #ff4757; margin: 0; display: none;"></p>
-              </div>
-              <!-- When logged in -->
-              <div id="sync-logged-in-state" style="display: none; flex-direction: column; gap: 0.5rem;">
-                <p style="font-size: 0.85rem; font-weight: 600; color: var(--text-main); margin: 0; display: flex; align-items: center; gap: 0.35rem;">
-                  <span id="sync-status-dot" style="color: #2ecc71;">🟢</span> Logged in as: <span id="sync-email-display">user@example.com</span>
-                </p>
-                <p style="font-size: 0.75rem; color: var(--text-muted); margin: 0;" id="sync-time-label">Last synced: Never</p>
-                <button id="sync-logout-btn" class="btn-primary btn-delete" style="margin: 0; padding: 0.6rem; font-size: 0.85rem; background: linear-gradient(135deg, #e67e22, #f39c12);">🚪 Log Out</button>
-              </div>
-            </div>
-          </div>
 
           <!-- Reset Button -->
           <div style="border-top: 1px solid rgba(0,0,0,0.06); padding-top: 1.5rem;">
@@ -501,6 +479,42 @@
           </div>
         </section>
       </div>
+
+  <!-- View Panel: Login -->
+  <div id="view-login" class="view-panel">
+    <section class="glass-card" style="max-width: 600px; margin: 4rem auto 0 auto;">
+      <h2 class="section-title" style="margin-bottom: 1.5rem; justify-content: center;">👤 Account & Sync</h2>
+      
+      <!-- Cloud Sync (Supabase) Card -->
+      <div class="settings-card" id="settings-sync-card" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(0,0,0,0.06); padding: 1.25rem; border-radius: 12px; margin-bottom: 1.5rem;">
+        <span class="settings-card-label" style="font-size: 0.85rem; color: var(--text-muted); font-weight: 500;">☁️ Cloud Sync (Supabase)</span>
+        <div id="sync-status-container" style="margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.5rem;">
+          <!-- When logged out -->
+          <div id="sync-logged-out-state" style="display: flex; flex-direction: column; gap: 0.75rem;">
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0;">Log in or sign up to cross-sync your progress across devices.</p>
+            <input type="email" id="supabase-email" placeholder="Email address" class="auth-input" />
+            <div style="position: relative; width: 100%;">
+              <input type="password" id="supabase-password" placeholder="Password" class="auth-input" style="width: 100%; padding-right: 40px; box-sizing: border-box;" />
+              <button type="button" id="toggle-password-btn" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; font-size: 1.2rem; color: var(--text-muted); padding: 0;">👁️</button>
+            </div>
+            <div style="display: flex; gap: 0.5rem;">
+              <button id="sync-login-btn" class="btn-primary" style="flex: 1; margin: 0; padding: 0.6rem; font-size: 0.85rem;">🔑 Log In</button>
+              <button id="sync-signup-btn" class="btn-action" style="flex: 1; margin: 0; padding: 0.6rem; font-size: 0.85rem; text-align: center; border-radius: 8px;">📝 Sign Up</button>
+            </div>
+            <p id="sync-error-msg" style="font-size: 0.75rem; color: #ff4757; margin: 0; display: none;"></p>
+          </div>
+          <!-- When logged in -->
+          <div id="sync-logged-in-state" style="display: none; flex-direction: column; gap: 0.5rem;">
+            <p style="font-size: 0.85rem; font-weight: 600; color: var(--text-main); margin: 0; display: flex; align-items: center; gap: 0.35rem;">
+              <span id="sync-status-dot" style="color: #2ecc71;">🟢</span> Logged in as: <span id="sync-email-display">user@example.com</span>
+            </p>
+            <p style="font-size: 0.75rem; color: var(--text-muted); margin: 0;" id="sync-time-label">Last synced: Never</p>
+            <button id="sync-logout-btn" class="btn-primary btn-delete" style="margin: 0; padding: 0.6rem; font-size: 0.85rem; background: linear-gradient(135deg, #e67e22, #f39c12);">🚪 Log Out</button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
 
     </div>
   </div>
