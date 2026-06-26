@@ -157,12 +157,37 @@ function checkHungerDecay() {
   
   if (timeDiff >= eightHoursInMs) {
     const intervals = Math.floor(timeDiff / eightHoursInMs);
-    let totalReduction = 0;
+    let penaltyPerInterval = 2; // base 2% decay
     
-    for (let i = 0; i < intervals; i++) {
-      // Random reduction between 10 and 20 per 8 hours
-      totalReduction += Math.floor(Math.random() * 11) + 10;
+    const nowObj = new Date();
+    
+    // Calculate penalty from overdue tasks
+    if (state.tasks) {
+      state.tasks.forEach(t => {
+        if (t.status === 'active' && new Date(t.deadline) < nowObj) {
+          if (t.priority === 'high') penaltyPerInterval += 8;
+          else if (t.priority === 'medium') penaltyPerInterval += 5;
+          else penaltyPerInterval += 3; // low
+        }
+      });
     }
+
+    // Calculate penalty from unchecked habits
+    const todayStr = getTodayString();
+    const currentDay = nowObj.getDay();
+    if (state.habits) {
+      state.habits.forEach(h => {
+        if (h.days && h.days.includes(currentDay) && h.lastCompletedDate !== todayStr) {
+          if (h.streak >= 50) penaltyPerInterval += 1;
+          else if (h.streak >= 30) penaltyPerInterval += 2;
+          else if (h.streak >= 15) penaltyPerInterval += 3;
+          else if (h.streak >= 5) penaltyPerInterval += 4;
+          else penaltyPerInterval += 5;
+        }
+      });
+    }
+
+    let totalReduction = penaltyPerInterval * intervals;
     
     // Never reduce more than 70 at once
     if (totalReduction > 70) totalReduction = 70;
