@@ -396,9 +396,18 @@ async function syncPullSupabase(forceRender = false) {
         console.log('[Gamification] Cloud state is newer. Syncing with local state.');
         state = data.data;
         lastSyncTimestamp = data.updated_at;
+        
+        // Re-run checks on the freshly pulled state
+        const streakChanged = checkLoginStreak();
+        const hungerChanged = checkHungerDecay();
+        
         localStorage.setItem('gamified_todo_state', JSON.stringify(state));
         updateSyncTimeLabel(lastSyncTimestamp);
         render();
+        
+        if (streakChanged || hungerChanged) {
+          syncPushSupabase();
+        }
       }
     }
   } catch (err) {
