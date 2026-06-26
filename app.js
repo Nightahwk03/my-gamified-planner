@@ -1238,7 +1238,7 @@ async function completeTask(id) {
   // Adjust User XP and Coins
   const tier = getTier(state.user.level);
   const tierMult = getTierModifiers(tier).gain;
-  const coinsEarned = parseFloat((1.5 * multiplier * tierMult).toFixed(1));
+  const coinsEarned = parseFloat((4.0 * multiplier * tierMult).toFixed(1));
   
   if (state.user.coins === undefined) state.user.coins = 0;
   state.user.coins += coinsEarned;
@@ -1314,7 +1314,7 @@ async function checkInHabit(id) {
   // Award Coins based on streak
   const tier = getTier(state.user.level);
   const tierMult = getTierModifiers(tier).gain;
-  const coinsEarned = parseFloat((1.0 * streakMult * tierMult).toFixed(1));
+  const coinsEarned = parseFloat((4.0 * streakMult * tierMult).toFixed(1));
   
   if (state.user.coins === undefined) state.user.coins = 0;
   state.user.coins += coinsEarned;
@@ -2167,21 +2167,35 @@ function renderPokedex() {
     } else {
       label.innerText = sprite.split('.')[0];
       
-      const petBtn = document.createElement('button');
-      petBtn.innerText = 'Set as Pet';
-      petBtn.className = 'btn-action';
-      petBtn.style.marginTop = '0.5rem';
-      petBtn.style.padding = '0.2rem 0.5rem';
-      petBtn.style.fontSize = '0.7rem';
-      petBtn.onclick = async () => {
-        state.user.activePet = sprite;
-        if (state.user.petHunger === undefined) state.user.petHunger = 100;
-        await saveData();
-        alert(`${sprite.split('.')[0]} is now your pet!`);
-      };
       spriteItem.appendChild(img);
       spriteItem.appendChild(label);
-      spriteItem.appendChild(petBtn);
+
+      if (state.user.activePet === sprite) {
+        const currentLabel = document.createElement('span');
+        currentLabel.innerText = 'Current Pet';
+        currentLabel.style.marginTop = '0.5rem';
+        currentLabel.style.padding = '0.2rem 0.5rem';
+        currentLabel.style.fontSize = '0.7rem';
+        currentLabel.style.fontWeight = 'bold';
+        currentLabel.style.color = 'var(--primary)';
+        currentLabel.style.background = 'rgba(79, 70, 229, 0.1)';
+        currentLabel.style.borderRadius = '4px';
+        spriteItem.appendChild(currentLabel);
+      } else {
+        const petBtn = document.createElement('button');
+        petBtn.innerText = 'Set as Pet';
+        petBtn.className = 'btn-action';
+        petBtn.style.marginTop = '0.5rem';
+        petBtn.style.padding = '0.2rem 0.5rem';
+        petBtn.style.fontSize = '0.7rem';
+        petBtn.onclick = async () => {
+          state.user.activePet = sprite;
+          if (state.user.petHunger === undefined) state.user.petHunger = 100;
+          await saveData();
+          renderPokedex(); // Re-render to update the buttons
+        };
+        spriteItem.appendChild(petBtn);
+      }
       grid.appendChild(spriteItem);
       return; // Early return because we appended manually
     }
@@ -2202,7 +2216,7 @@ function renderPet() {
   
   if (state.user.coins === undefined) state.user.coins = 0;
   if (coinDisplay) {
-    coinDisplay.innerText = `${state.user.coins} 🪙`;
+    coinDisplay.innerText = `${parseFloat(state.user.coins.toFixed(2))} 🪙`;
   }
 
   if (displayArea && petControls) {
@@ -2342,7 +2356,7 @@ function renderShop() {
   if (!shopContainer) return;
   
   if (state.user.coins === undefined) state.user.coins = 0;
-  if (shopBalance) shopBalance.innerText = `${state.user.coins} 🪙`;
+  if (shopBalance) shopBalance.innerText = `${parseFloat(state.user.coins.toFixed(2))} 🪙`;
   
   shopContainer.innerHTML = '';
   
@@ -2416,7 +2430,7 @@ async function buyBerry(berry) {
   
   if (!state.user.inventory) state.user.inventory = {};
   
-  state.user.coins -= berry.cost;
+  state.user.coins = parseFloat((state.user.coins - berry.cost).toFixed(2));
   state.user.inventory[berry.id] = (state.user.inventory[berry.id] || 0) + 1;
   
   await saveData();
