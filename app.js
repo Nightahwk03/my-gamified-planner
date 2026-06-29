@@ -1531,7 +1531,13 @@ async function performTickChecks() {
       if (notCompletedOnTime && notPenalizedYet) {
         if (habit.streak > 0 || habit.lastCompletedDate !== null) {
           habit.streak = 0;
-          adjustXP(-30, `Missed Habit Penalty: "${habit.title}"`);
+          
+          if (state.user.coins === undefined) state.user.coins = 0;
+          state.user.coins -= 4.0;
+          if (state.user.coins < 0) state.user.coins = 0;
+          state.user.coins = parseFloat(state.user.coins.toFixed(2));
+          
+          adjustXP(-30, `Missed Habit Penalty: "${habit.title}" (Lost 4🪙)`);
           habit.lastPenalizedDate = lastScheduledDateStr;
           changed = true;
         }
