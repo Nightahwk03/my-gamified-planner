@@ -144,6 +144,28 @@ function checkLoginStreak() {
   return changed;
 }
 
+// Check and reset broken Habit Streaks
+function checkHabitStreaks() {
+  let changed = false;
+  const now = new Date();
+  
+  if (!state.habits) return false;
+  
+  state.habits.forEach(habit => {
+    const lastScheduledStr = getLastScheduledDateStr(habit.days, now);
+    if (lastScheduledStr) {
+      if (!habit.lastCompletedDate || habit.lastCompletedDate < lastScheduledStr) {
+        if (habit.streak > 0) {
+          habit.streak = 0;
+          changed = true;
+        }
+      }
+    }
+  });
+  
+  return changed;
+}
+
 // 8-Hour Hunger Decay Logic
 function checkHungerDecay() {
   if (!state.user.lastHungerDecay) {
@@ -425,12 +447,13 @@ async function syncPullSupabase(forceRender = false) {
         // Re-run checks on the freshly pulled state
         const streakChanged = checkLoginStreak();
         const hungerChanged = checkHungerDecay();
+        const habitStreakChanged = checkHabitStreaks();
         
         localStorage.setItem('gamified_todo_state', JSON.stringify(state));
         updateSyncTimeLabel(lastSyncTimestamp);
         render();
         
-        if (streakChanged || hungerChanged) {
+        if (streakChanged || hungerChanged || habitStreakChanged) {
           syncPushSupabase();
         }
       }
@@ -483,13 +506,14 @@ async function loadData() {
   // Update login streak, hunger decay, and run background checks immediately on startup
   const streakChanged = checkLoginStreak();
   const hungerChanged = checkHungerDecay();
+  const habitStreakChanged = checkHabitStreaks();
   
-  if (streakChanged || hungerChanged) {
+  if (streakChanged || hungerChanged || habitStreakChanged) {
     await saveData();
   }
   await performTickChecks();
   initSidebarAndRouting();
-  if (!streakChanged && !hungerChanged) {
+  if (!streakChanged && !hungerChanged && !habitStreakChanged) {
     render();
   }
 }
